@@ -34,7 +34,7 @@ export default function GfitLayout() {
           backgroundColor: "#4C4A6B", // Purple-gray background
           borderTopWidth: 0,
           height: 90,
-          paddingBottom: 20,
+          paddingBottom: 30,
           paddingTop: 10,
           borderTopLeftRadius: 25,
           borderTopRightRadius: 25,
@@ -44,6 +44,7 @@ export default function GfitLayout() {
           bottom: 0,
           elevation: 0,
           shadowOpacity: 0,
+          minHeight: 100,
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -52,24 +53,25 @@ export default function GfitLayout() {
         },
         tabBarItemStyle: {
           paddingVertical: 8,
+          bottom: 5,
         },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title: "home",
+          title: "Home",
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
+            <Ionicons name={focused ? "fitness" : "fitness-outline"} size={24} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="leaderboard"
         options={{
-          title: "leaderboard",
+          title: "Leaderboard",
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? "search" : "search-outline"} size={24} color={color} />
+            <Ionicons name={focused ? "trophy" : "trophy-outline"} size={24} color={color} />
           ),
         }}
       />
@@ -78,7 +80,7 @@ export default function GfitLayout() {
         options={{
           title: "Activity",
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? "bar-chart" : "bar-chart-outline"} size={24} color={color} />
+            <Ionicons name={focused ? "analytics" : "analytics-outline"} size={24} color={color} />
           ),
         }}
       />

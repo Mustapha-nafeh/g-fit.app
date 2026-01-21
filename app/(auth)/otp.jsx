@@ -1,5 +1,15 @@
 import React, { useState, useRef } from "react";
-import { View, Text, TextInput, TouchableOpacity, StatusBar, Image } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StatusBar,
+  Image,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useCheckOtp, useResendOtp } from "../../api/authApi";
@@ -12,7 +22,6 @@ const OTPVerificationScreen = () => {
   const inputRefs = useRef([]);
   const { mutate, isLoading, isError, data } = useCheckOtp(); // CHECK OTP
   const { mutate: resendOtp } = useResendOtp(); // RESEND OTP
-  const token_key = securestore.getItemAsync("token_key");
 
   const handleOtpChange = (value, index) => {
     const newOtp = [...otp];
@@ -32,32 +41,45 @@ const OTPVerificationScreen = () => {
     }
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     const otpCode = otp.join("");
-    console.log("Verifying OTP:", token_key);
+    const tokenKey = await securestore.getItemAsync("token_key");
+
+    console.log("Verifying OTP with token:", tokenKey);
+
+    if (!tokenKey) {
+      showToast("error", "Error", "Token key not found. Please try registering again.");
+      return;
+    }
+
     mutate(
-      { otp: otpCode, token_key: token_key },
+      { otp: otpCode, token_key: tokenKey },
       {
         onSuccess: (data) => {
-          console.log("OTP verified successfully:", data);
           showToast("success", "OTP Verified", "Your OTP has been verified successfully!");
-          router.replace("(selection)/select-app");
           securestore.setItemAsync("access_token", data.data.access_token);
-          // Navigate to the next screen or perform other actions
+          router.replace("(selection)/select-user");
         },
         onError: (error) => {
           console.log("OTP verification failed:", error);
           showToast("error", "OTP Verification Failed", error.response?.data?.message || "An error occurred");
-          // Show error message to the user
         },
       }
     );
   };
 
-  const handleResend = () => {
-    console.log("Resend code pressed", token_key);
+  const handleResend = async () => {
+    const tokenKey = await securestore.getItemAsync("token_key");
+
+    console.log("Resend code pressed with token:", tokenKey);
+
+    if (!tokenKey) {
+      showToast("error", "Error", "Token key not found. Please try registering again.");
+      return;
+    }
+
     resendOtp(
-      { token_key: token_key },
+      { token_key: tokenKey },
       {
         onSuccess: (data) => {
           console.log("OTP resent successfully");
@@ -78,87 +100,108 @@ const OTPVerificationScreen = () => {
     router.back();
   };
 
+  const handlelog = async () => {
+    const tokenKey = await securestore.getItemAsync("token_key");
+    console.log("Token Key:", tokenKey);
+  };
+
   return (
     <>
       <StatusBar barStyle="light-content" />
-      <View className="bg-background flex-1 px-6 pt-12">
-        <Image source={require("../../assets/Ellipse1.png")} className=" absolute top-0 left-0" />
+      <KeyboardAvoidingView
+        className="flex-1 bg-background"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View className="flex-1 px-6 pt-12">
+            <Image source={require("../../assets/Ellipse1.png")} className=" absolute top-0 left-0" />
 
-        {/* Header with Back Button */}
-        <View className="flex-row items-center mb-12">
-          <TouchableOpacity
-            onPress={handleBack}
-            className="w-12 h-12 rounded-2xl border border-gray-400 justify-center items-center"
-          >
-            <Ionicons name="chevron-back" size={24} color="white" />
-          </TouchableOpacity>
-        </View>
+            {/* Header with Back Button */}
+            <View className="flex-row items-center mb-12">
+              <TouchableOpacity
+                onPress={handlelog}
+                className="w-12 h-12 rounded-2xl border border-gray-400 justify-center items-center"
+              >
+                <Ionicons name="chevron-back" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
 
-        {/* Content Container */}
-        <View className="flex-1 justify-center">
-          {/* Title */}
-          <View className="mb-6">
-            <Text style={{ fontFamily: "MontserratAlternates_700Bold" }} className="text-white text-3xl text-left mb-4">
-              OTP Verification
-            </Text>
-            <Text
-              style={{ fontFamily: "MontserratAlternates_400Regular" }}
-              className="text-gray-300 text-base text-left leading-6"
-            >
-              Enter the verification code we just sent on your email address.
-            </Text>
+            {/* Content Container */}
+            <View className="flex-1 justify-center min-h-[500px]">
+              {/* Title */}
+              <View className="mb-6">
+                <Text
+                  style={{ fontFamily: "MontserratAlternates_700Bold" }}
+                  className="text-white text-3xl text-left mb-4"
+                >
+                  OTP Verification
+                </Text>
+                <Text
+                  style={{ fontFamily: "MontserratAlternates_400Regular" }}
+                  className="text-gray-300 text-base text-left leading-6"
+                >
+                  Enter the verification code we just sent on your email address.
+                </Text>
+              </View>
+
+              {/* OTP Input Boxes */}
+              <View className="flex-row justify-between mb-12 px-2">
+                {otp.map((digit, index) => (
+                  <TextInput
+                    key={index}
+                    ref={(ref) => (inputRefs.current[index] = ref)}
+                    value={digit}
+                    onChangeText={(value) => handleOtpChange(value.slice(-1), index)}
+                    onKeyPress={(e) => handleKeyPress(e, index)}
+                    style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
+                    className={`w-16 h-16 bg-gray-700/50 text-white text-center text-xl rounded-2xl ${
+                      digit ? "border-2 border-gray-400" : "border border-gray-600"
+                    }`}
+                    keyboardType="numeric"
+                    maxLength={1}
+                    selectTextOnFocus
+                  />
+                ))}
+              </View>
+
+              {/* Verify Button */}
+              <TouchableOpacity
+                onPress={handleVerify}
+                className="w-full bg-gray-200 py-4 px-6 rounded-2xl mb-8 active:bg-white"
+                disabled={otp.some((digit) => !digit)}
+              >
+                <Text
+                  style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
+                  className="text-gray-800 text-center text-lg"
+                >
+                  Verify
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Bottom Resend Link */}
+            <View className="pb-8">
+              <TouchableOpacity onPress={handleResend} className="active:opacity-70">
+                <Text
+                  style={{ fontFamily: "MontserratAlternates_400Regular" }}
+                  className="text-white text-center text-base"
+                >
+                  Didn't received code?{" "}
+                  <Text style={{ fontFamily: "MontserratAlternates_600SemiBold" }} className="text-yellow-300">
+                    Resend
+                  </Text>
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-
-          {/* OTP Input Boxes */}
-          <View className="flex-row justify-between mb-12 px-2">
-            {otp.map((digit, index) => (
-              <TextInput
-                key={index}
-                ref={(ref) => (inputRefs.current[index] = ref)}
-                value={digit}
-                onChangeText={(value) => handleOtpChange(value.slice(-1), index)}
-                onKeyPress={(e) => handleKeyPress(e, index)}
-                style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-                className={`w-16 h-16 bg-gray-700/50 text-white text-center text-xl rounded-2xl ${
-                  digit ? "border-2 border-gray-400" : "border border-gray-600"
-                }`}
-                keyboardType="numeric"
-                maxLength={1}
-                selectTextOnFocus
-              />
-            ))}
-          </View>
-
-          {/* Verify Button */}
-          <TouchableOpacity
-            onPress={handleVerify}
-            className="w-full bg-gray-200 py-4 px-6 rounded-2xl mb-8 active:bg-white"
-            disabled={otp.some((digit) => !digit)}
-          >
-            <Text
-              style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-              className="text-gray-800 text-center text-lg"
-            >
-              Verify
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Bottom Resend Link */}
-        <View className="pb-8">
-          <TouchableOpacity onPress={handleResend} className="active:opacity-70">
-            <Text
-              style={{ fontFamily: "MontserratAlternates_400Regular" }}
-              className="text-white text-center text-base"
-            >
-              Didn't received code?{" "}
-              <Text style={{ fontFamily: "MontserratAlternates_600SemiBold" }} className="text-yellow-300">
-                Resend
-              </Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </>
   );
 };

@@ -1,19 +1,56 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, TouchableOpacity, StatusBar, Image } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 
 const OnboardingScreen = ({ currentPage = 3, totalPages = 4 }) => {
+  useEffect(() => {
+    // Check if user has already selected an app and user
+    const checkStoredData = async () => {
+      try {
+        const tokenKey = await SecureStore.getItemAsync("token_key");
+        const selectedApp = await SecureStore.getItemAsync("selectedApp");
+
+        if (tokenKey && selectedApp) {
+          // User has previously selected app and user, redirect to appropriate app
+          let route = "/(gfit)/home"; // Default fallback
+
+          switch (selectedApp) {
+            case "gfit":
+              route = "/(gfit)/home";
+              break;
+            case "gtkf":
+              route = "/(gtkf)/workouts";
+              break;
+            case "adults":
+              route = "/(adults)/home";
+              break;
+            default:
+              route = "/(gfit)/home";
+              break;
+          }
+
+          router.replace(route);
+        }
+      } catch (error) {
+        console.log("No stored data found, continuing with onboarding");
+      }
+    };
+
+    checkStoredData();
+  }, []);
+
   const handleNext = () => {
-    router.push(`/(onboarding)/get-started`);
+    router.push(`/(selection)/select-app`);
   };
 
   return (
     <>
       <StatusBar barStyle="light-content" />
       <View className="flex-1 px-6 bg-background">
-        <Image source={require("../../assets/Ellipse1.png")} className=" absolute top-0 left-0" />
+        <Image source={require("../assets/Ellipse1.png")} className=" absolute top-0 left-0" />
 
         {/* Content Container */}
         <View className="flex-1 justify-end px-2">

@@ -26,6 +26,12 @@ export const resendOtpApi = async (emailData) => {
   return response.data;
 };
 
+// FORGOT PASSWORD
+export const forgotPasswordApi = async (emailData) => {
+  const response = await apiClient.post("/forget-password", emailData);
+  return response.data;
+};
+
 // LOGIN HOOK
 export const useLogin = () => {
   const mutation = useMutation({
@@ -73,6 +79,20 @@ export const useCheckOtp = () => {
 export const useResendOtp = () => {
   const mutation = useMutation({
     mutationFn: resendOtpApi,
+  });
+  return mutation;
+};
+
+// FORGOT PASSWORD HOOK
+export const useForgotPassword = () => {
+  const mutation = useMutation({
+    mutationFn: forgotPasswordApi,
+    onSuccess: (data) => {
+      console.log("Forgot password email sent successfully", data);
+    },
+    onError: (error) => {
+      console.error("Forgot password failed", error);
+    },
   });
   return mutation;
 };

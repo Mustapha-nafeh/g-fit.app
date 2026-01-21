@@ -13,16 +13,35 @@ const AppSelectionScreen = () => {
 
   const handleAppSelect = (appType) => {
     setSelectedApp(appType);
-    console.log("Selected app:", appType);
   };
 
   const handleGetStarted = () => {
-    router.push("(selection)/subscribe", { selectedApp: selectedApp });
+    if (!selectedApp) return;
+    router.push({ pathname: "(selection)/select-user", params: { selectedApp: selectedApp } });
   };
 
-  const handleVisit = () => {
-    console.log("Get Started pressed with app:", selectedApp);
-    router.push("(selection)/subscribe", { selectedApp: selectedApp });
+  const handleVisitAsGuest = () => {
+    if (!selectedApp) return;
+
+    // Navigate directly to the app without user selection for guest mode
+    let route = "/(gfit)/home"; // Default fallback
+
+    switch (selectedApp) {
+      case "gfit":
+        route = "/(gfit)/home";
+        break;
+      case "gtkf":
+        route = "/(gtkf)/workouts";
+        break;
+      case "adults":
+        route = "/(adults)/home"; // Assuming this exists
+        break;
+      default:
+        route = "/(gfit)/home"; // Default fallback
+        break;
+    }
+
+    router.replace(route);
   };
 
   const appOptions = [
@@ -41,7 +60,7 @@ const AppSelectionScreen = () => {
       placeholder: "ADULT",
     },
     {
-      id: "kids",
+      id: "gtkf",
       title: "Kids Kit",
       subtitle: "Best for kids",
       backgroundColor: "bg-gray-300",
@@ -133,7 +152,7 @@ const AppSelectionScreen = () => {
         {/* Get Started Button */}
         <TouchableOpacity
           onPress={handleGetStarted}
-          className={`w-full py-3 px-6 rounded-2xl mb-2 ${selectedApp ? "bg-gray-200 active:bg-white" : "bg-gray-600"}`}
+          className={`w-full py-3 px-6 rounded-2xl mb-8 ${selectedApp ? "bg-gray-200 active:bg-white" : "bg-gray-600"}`}
           disabled={!selectedApp}
         >
           <Text
@@ -144,15 +163,20 @@ const AppSelectionScreen = () => {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={handleGetStarted}
-          className={`w-full py-3 px-6 rounded-2xl mb-8 bg-buttonSecondary  border-white`}
+        {/* <TouchableOpacity
+          onPress={handleVisitAsGuest}
+          className={`w-full py-3 px-6 rounded-2xl  ${
+            selectedApp ? "bg-buttonSecondary" : "bg-gray-600"
+          } border-white`}
           disabled={!selectedApp}
         >
-          <Text style={{ fontFamily: "MontserratAlternates_600SemiBold" }} className={`text-center text-lg text-white`}>
+          <Text
+            style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
+            className={`text-center text-lg ${selectedApp ? "text-white" : "text-gray-400"}`}
+          >
             Visit as a guest
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </>
   );

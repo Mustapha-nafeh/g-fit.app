@@ -1,16 +1,32 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, TouchableOpacity, StatusBar, Image } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 
 const GetStartedScreen = ({ currentPage = 4, totalPages = 4, isLastPage = true }) => {
   const handleBack = () => {
     router.back();
   };
 
-  const handleGetStarted = () => {
-    router.push("/(auth)/welcome");
+  const handleGetStarted = async () => {
+    try {
+      // Check if user has access token stored
+      const accessToken = await SecureStore.getItemAsync("access_token");
+
+      if (accessToken) {
+        // User is logged in, go to user selection
+        router.push("/(selection)/select-app");
+      } else {
+        // User not logged in, go to auth welcome
+        router.push("/(auth)/welcome");
+      }
+    } catch (error) {
+      console.error("Error checking access token:", error);
+      // If there's an error, default to welcome page
+      router.push("/(auth)/welcome");
+    }
   };
 
   return (

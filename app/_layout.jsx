@@ -33,10 +33,10 @@ export default function RootLayout() {
       <GlobalProvider>
         <QueryClientProvider client={queryClient}>
           <Stack>
+            <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-            <Stack.Screen name="(selection)" options={{ headerShown: false }} />
-            <Stack.Screen name="(coachApp)" options={{ headerShown: false }} />
+            <Stack.Screen name="(selection)" options={{ headerShown: false, animation: "fade" }} />
             <Stack.Screen name="(gfit)" options={{ headerShown: false }} />
             <Stack.Screen name="(gtkf)" options={{ headerShown: false }} />
           </Stack>

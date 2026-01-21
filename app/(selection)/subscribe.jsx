@@ -1,22 +1,44 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ImageBackground, StatusBar, SafeAreaView, Image } from "react-native";
+import { View, Text, TouchableOpacity, ImageBackground, StatusBar, SafeAreaView, Image, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
 export default function SubscriptionPage() {
   const [selectedPlan, setSelectedPlan] = useState("monthly");
   const [selectedType, setSelectedType] = useState("individual");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Mock subscription products for development
+  const mockProducts = {
+    "individual.monthly": { price: "$9.99", title: "Individual Monthly" },
+    "individual.yearly": { price: "$99.99", title: "Individual Yearly" },
+    "family.monthly": { price: "$14.99", title: "Family Monthly" },
+    "family.yearly": { price: "$149.99", title: "Family Yearly" },
+  };
+
+  // Get current product details for display
+  const getCurrentProduct = () => {
+    const key = `${selectedType}.${selectedPlan}`;
+    return mockProducts[key] || { price: "$9.99", title: "Subscription" };
+  };
 
   const handleBack = () => {
     router.back();
   };
 
-  const handleContinue = () => {
-    // Handle subscription continuation logic
-    console.log("Selected plan:", selectedPlan);
-    console.log("Selected type:", selectedType);
-    // Navigate to next screen or handle payment
-    router.push("/(selection)/select-payment");
+  const handleContinue = async () => {
+    setIsLoading(true);
+
+    // Simulate payment processing
+    setTimeout(() => {
+      setIsLoading(false);
+      Alert.alert("Purchase Successful!", "Your subscription has been activated.", [
+        {
+          text: "OK",
+          onPress: () => router.push("/(selection)/success"),
+        },
+      ]);
+    }, 2000);
   };
 
   return (
@@ -24,125 +46,199 @@ export default function SubscriptionPage() {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <SafeAreaView className="flex-1">
         <Image source={require("../../assets/subfade.png")} className=" absolute" />
-        <View className="flex-1 px-6">
-          {/* Back Button */}
-          <TouchableOpacity
-            onPress={handleBack}
-            className="w-12 h-12 rounded-full bg-black/20 backdrop-blur-sm items-center justify-center mt-4"
-            style={{ backgroundColor: "rgba(0, 0, 0, 0.2)" }}
-          >
+
+        {/* Header */}
+        <View className="flex-row items-center justify-between px-6 pt-4 pb-2">
+          <TouchableOpacity onPress={handleBack} className="p-2">
             <Ionicons name="chevron-back" size={24} color="white" />
           </TouchableOpacity>
+        </View>
 
-          {/* Content */}
-          <View className="flex h-full justify-end pb-20">
-            {/* Title */}
-            <View className="mb-8">
-              <Text
-                style={{ fontFamily: "MontserratAlternates_700Bold" }}
-                className="text-white text-5xl font-bold leading-tight"
-              >
-                Choose your{"\n"}plan
-              </Text>
-            </View>
+        {/* Content */}
+        <View className="flex-1 px-6">
+          {/* Title */}
+          <View className="mt-8 mb-8">
+            <Text
+              style={{ fontFamily: "MontserratAlternates_700Bold" }}
+              className="text-white text-3xl text-center mb-2"
+            >
+              Choose Your Plan
+            </Text>
+            <Text
+              style={{ fontFamily: "MontserratAlternates_400Regular" }}
+              className="text-gray-300 text-center text-base"
+            >
+              Get full access to all features
+            </Text>
+          </View>
 
-            {/* Pricing Options */}
-            <View className="space-y-4 mb-8">
-              {/* Monthly Plan */}
+          {/* Plan Type Selection */}
+          <View className="mb-6">
+            <Text style={{ fontFamily: "MontserratAlternates_600SemiBold" }} className="text-white text-lg mb-4">
+              Plan Type
+            </Text>
+            <View className="flex-row space-x-4">
               <TouchableOpacity
-                onPress={() => setSelectedPlan("monthly")}
-                className={`rounded-2xl border-2 px-6 py-4 ${
-                  selectedPlan === "monthly" ? "border-white bg-white/10" : "border-white/40 bg-white/5"
+                onPress={() => setSelectedType("individual")}
+                className={`flex-1 p-4 rounded-2xl border-2 ${
+                  selectedType === "individual" ? "border-buttonPrimary bg-buttonPrimary/20" : "border-gray-600"
                 }`}
-                style={{
-                  backgroundColor:
-                    selectedPlan === "monthly" ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.05)",
-                }}
-              >
-                <Text
-                  className="text-white text-xl font-semibold"
-                  style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-                >
-                  {selectedType === "many" ? "2$ per month" : "1$ per month"}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Yearly Plan */}
-              <TouchableOpacity
-                onPress={() => setSelectedPlan("yearly")}
-                className={`rounded-2xl border-2 px-6 py-4 ${
-                  selectedPlan === "yearly" ? "border-white bg-white/10" : "border-white/40 bg-white/5"
-                }`}
-                style={{
-                  backgroundColor: selectedPlan === "yearly" ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.05)",
-                }}
               >
                 <Text
                   style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-                  className="text-white text-xl font-semibold"
-                >
-                  {selectedType === "many" ? "20$ per year" : "10$ per year"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Plan Type Selection */}
-            <View className="flex-row justify-between items-center mb-8">
-              <TouchableOpacity onPress={() => setSelectedType("individual")} className="flex-row items-center">
-                <View
-                  className={`w-6 h-6 rounded-full border-2 border-white mr-3 ${
-                    selectedType === "individual" ? "bg-white" : "bg-transparent"
-                  }`}
-                >
-                  {selectedType === "individual" && (
-                    <View className="flex-1 items-center justify-center">
-                      <View className="w-2 h-2 rounded-full bg-black" />
-                    </View>
-                  )}
-                </View>
-                <Text
-                  style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-                  className="text-white text-lg font-medium"
+                  className={`text-center ${selectedType === "individual" ? "text-buttonPrimary" : "text-white"}`}
                 >
                   Individual
                 </Text>
               </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setSelectedType("many")} className="flex-row items-center">
-                <View
-                  className={`w-6 h-6 rounded-full border-2 border-white mr-3 ${
-                    selectedType === "many" ? "bg-white" : "bg-transparent"
-                  }`}
-                >
-                  {selectedType === "many" && (
-                    <View className="flex-1 items-center justify-center">
-                      <View className="w-2 h-2 rounded-full bg-black" />
-                    </View>
-                  )}
-                </View>
+              <TouchableOpacity
+                onPress={() => setSelectedType("family")}
+                className={`flex-1 p-4 rounded-2xl border-2 ${
+                  selectedType === "family" ? "border-buttonPrimary bg-buttonPrimary/20" : "border-gray-600"
+                }`}
+              >
                 <Text
                   style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-                  className="text-white text-lg font-medium"
+                  className={`text-center ${selectedType === "family" ? "text-buttonPrimary" : "text-white"}`}
                 >
-                  Many
+                  Family
                 </Text>
               </TouchableOpacity>
             </View>
-
-            {/* Continue Button */}
-            <TouchableOpacity
-              onPress={handleContinue}
-              className="bg-black/30 rounded-2xl py-4 items-center"
-              style={{ backgroundColor: "rgba(0, 0, 0, 0.3)" }}
-            >
-              <Text
-                style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-                className="text-white text-xl font-semibold"
-              >
-                Continue
-              </Text>
-            </TouchableOpacity>
           </View>
+
+          {/* Billing Period Selection */}
+          <View className="mb-8">
+            <Text style={{ fontFamily: "MontserratAlternates_600SemiBold" }} className="text-white text-lg mb-4">
+              Billing Period
+            </Text>
+            <View className="space-y-3">
+              <TouchableOpacity
+                onPress={() => setSelectedPlan("monthly")}
+                className={`p-4 rounded-2xl border-2 ${
+                  selectedPlan === "monthly" ? "border-buttonPrimary bg-buttonPrimary/20" : "border-gray-600"
+                }`}
+              >
+                <View className="flex-row justify-between items-center">
+                  <View>
+                    <Text
+                      style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
+                      className={`${selectedPlan === "monthly" ? "text-buttonPrimary" : "text-white"}`}
+                    >
+                      Monthly
+                    </Text>
+                    <Text style={{ fontFamily: "MontserratAlternates_400Regular" }} className="text-gray-300 text-sm">
+                      Billed monthly
+                    </Text>
+                  </View>
+                  <Text
+                    style={{ fontFamily: "MontserratAlternates_700Bold" }}
+                    className={`${selectedPlan === "monthly" ? "text-buttonPrimary" : "text-white"}`}
+                  >
+                    {selectedType === "individual" ? "$9.99" : "$14.99"}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setSelectedPlan("yearly")}
+                className={`p-4 rounded-2xl border-2 ${
+                  selectedPlan === "yearly" ? "border-buttonPrimary bg-buttonPrimary/20" : "border-gray-600"
+                }`}
+              >
+                <View className="flex-row justify-between items-center">
+                  <View>
+                    <Text
+                      style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
+                      className={`${selectedPlan === "yearly" ? "text-buttonPrimary" : "text-white"}`}
+                    >
+                      Yearly
+                    </Text>
+                    <Text style={{ fontFamily: "MontserratAlternates_400Regular" }} className="text-gray-300 text-sm">
+                      Save 17% - Billed annually
+                    </Text>
+                  </View>
+                  <View className="items-end">
+                    <Text
+                      style={{ fontFamily: "MontserratAlternates_700Bold" }}
+                      className={`${selectedPlan === "yearly" ? "text-buttonPrimary" : "text-white"}`}
+                    >
+                      {selectedType === "individual" ? "$99.99" : "$149.99"}
+                    </Text>
+                    <Text className="text-gray-400 text-xs">
+                      {selectedType === "individual" ? "$8.33/mo" : "$12.50/mo"}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Features List */}
+          <View className="mb-8">
+            <Text style={{ fontFamily: "MontserratAlternates_600SemiBold" }} className="text-white text-lg mb-4">
+              What's Included
+            </Text>
+            <View className="space-y-3">
+              <View className="flex-row items-center">
+                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                <Text style={{ fontFamily: "MontserratAlternates_400Regular" }} className="text-gray-300 ml-3">
+                  Access to all workouts
+                </Text>
+              </View>
+              <View className="flex-row items-center">
+                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                <Text style={{ fontFamily: "MontserratAlternates_400Regular" }} className="text-gray-300 ml-3">
+                  Personalized fitness plans
+                </Text>
+              </View>
+              <View className="flex-row items-center">
+                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                <Text style={{ fontFamily: "MontserratAlternates_400Regular" }} className="text-gray-300 ml-3">
+                  Progress tracking
+                </Text>
+              </View>
+              <View className="flex-row items-center">
+                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                <Text style={{ fontFamily: "MontserratAlternates_400Regular" }} className="text-gray-300 ml-3">
+                  Expert guidance & tips
+                </Text>
+              </View>
+              {selectedType === "family" && (
+                <View className="flex-row items-center">
+                  <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                  <Text style={{ fontFamily: "MontserratAlternates_400Regular" }} className="text-gray-300 ml-3">
+                    Up to 6 family members
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+
+        {/* Continue Button */}
+        <View className="px-6 pb-8">
+          <TouchableOpacity
+            onPress={handleContinue}
+            disabled={isLoading}
+            className={`w-full py-4 px-6 rounded-3xl ${isLoading ? "bg-gray-600" : "bg-buttonPrimary"}`}
+          >
+            <Text
+              style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
+              className="text-gray-800 text-center text-lg"
+            >
+              {isLoading ? "Processing..." : `Continue with ${getCurrentProduct().title}`}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Terms */}
+          <Text
+            style={{ fontFamily: "MontserratAlternates_400Regular" }}
+            className="text-gray-400 text-center text-xs mt-4"
+          >
+            By continuing, you agree to our Terms of Service and Privacy Policy. Subscription automatically renews
+            unless cancelled.
+          </Text>
         </View>
       </SafeAreaView>
     </ImageBackground>
