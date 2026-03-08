@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Image, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -9,52 +9,82 @@ import { showToast } from "../../constants";
 import useFilterData from "../../hooks/useFilter";
 import GtkfHeader from "../../global-components/GtkfHeader";
 
-// Mock categories - replace with API call if needed
+// Workout categories for filtering - these should match the tags from API
 const workoutCategories = [
-  { id: "all", name: "New workouts", icon: null, active: true },
+  { id: "all", name: "All Workouts", icon: null, active: true },
   { id: "cardio", name: "Cardio", icon: "heart-outline" },
-  { id: "flexibility", name: "Flexibility", icon: "body-outline" },
   { id: "strength", name: "Strength", icon: "barbell-outline" },
+  { id: "flexibility", name: "Flexibility", icon: "body-outline" },
   { id: "yoga", name: "Yoga", icon: "leaf-outline" },
+  { id: "dance", name: "Dance", icon: "musical-notes-outline" },
+  { id: "sports", name: "Sports", icon: "basketball-outline" },
 ];
 
 export default function WorkoutsPage() {
   const [workouts, setWorkouts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [refreshing, setRefreshing] = useState(false);
 
-  const { mutate, data, isLoading, isError } = useGetWorkouts();
+  const { data, isLoading, isError, error, refetch } = useGetWorkouts("kids");
 
-  // Initialize filter hook
+  // Initialize filter hook - filter by tags field
   const { filterFields, setFilterFields, filteredData } = useFilterData(workouts, {
-    category: selectedCategory === "all" ? "" : selectedCategory,
+    tags: selectedCategory === "all" ? "" : selectedCategory,
   });
 
-  // Fetch workouts on component mount
+  // Update workouts when data is fetched
   useEffect(() => {
-    mutate(
-      { type: "kids" },
-      {
-        onSuccess: (data) => {
-          console.log("Workouts fetched successfully:", data);
-          setWorkouts(data.data || []);
-        },
-        onError: (error) => {
-          console.error("Error fetching Workouts:", error);
-          showToast("error", "Error", error.response?.data?.message || "An error occurred");
-        },
-      }
-    );
-  }, []);
+    if (data?.data) {
+      setWorkouts(data.data);
+    }
+  }, [data]);
+
+  // Show error toast when there's an error
+  useEffect(() => {
+    if (isError && error) {
+      console.error("Error fetching Workouts:", error);
+      showToast("error", "Error", error.response?.data?.message || "Failed to load workouts");
+    }
+  }, [isError, error]);
 
   // Handle category selection
   const handleCategorySelect = (categoryId) => {
+    console.log("Filtering by category:", categoryId);
+    console.log("Current workouts count:", workouts.length);
     setSelectedCategory(categoryId);
-    setFilterFields("category", categoryId === "all" ? "" : categoryId);
+    setFilterFields("tags", categoryId === "all" ? "" : categoryId);
+  };
+
+  // Get count of workouts for each category
+  const getCategoryCount = (categoryId) => {
+    if (categoryId === "all") return workouts.length;
+    const filtered = workouts.filter(
+      (workout) =>
+        workout.tags &&
+        Array.isArray(workout.tags) &&
+        workout.tags.some((tag) => tag.toLowerCase().includes(categoryId.toLowerCase()))
+    );
+    console.log(`Category ${categoryId} count:`, filtered.length, "from", workouts.length, "total");
+    return filtered.length;
   };
 
   // Handle workout item press
-  const handleWorkoutPress = (workoutId) => {
-    router.push(`/(gtkf)/workout-details?id=${workoutId}`);
+  const handleWorkoutPress = (workoutSlug) => {
+    router.push(`/(gtkf)/workout-details?slug=${workoutSlug}`);
+  };
+
+  // Handle pull to refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+      showToast("success", "Success", "Workouts refreshed successfully");
+    } catch (error) {
+      console.error("Error refreshing workouts:", error);
+      showToast("error", "Error", "Failed to refresh workouts");
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (
@@ -79,38 +109,65 @@ export default function WorkoutsPage() {
                   key={category.id}
                   onPress={() => handleCategorySelect(category.id)}
                   className={`px-4 py-2 rounded-full flex-row items-center ${
-                    selectedCategory === category.id ? "bg-green-200" : "bg-transparent"
+                    selectedCategory === category.id ? "bg-green-200 border border-green-300" : "bg-gray-100"
                   }`}
                 >
                   {category.icon && (
                     <Ionicons
                       name={category.icon}
                       size={16}
-                      color={selectedCategory === category.id ? "#374151" : "#9CA3AF"}
+                      color={selectedCategory === category.id ? "#059669" : "#6B7280"}
                       className="mr-1"
                     />
                   )}
                   <Text
                     className={`font-medium ml-1 ${
-                      selectedCategory === category.id ? "text-gray-800" : "text-gray-400"
+                      selectedCategory === category.id ? "text-green-800" : "text-gray-600"
                     }`}
                   >
                     {category.name}
                   </Text>
+                  {/* Show count for each category */}
+                  <View
+                    className={`ml-2 px-2 py-0.5 rounded-full ${
+                      selectedCategory === category.id ? "bg-green-300" : "bg-gray-200"
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs font-semibold ${
+                        selectedCategory === category.id ? "text-green-900" : "text-gray-700"
+                      }`}
+                    >
+                      {getCategoryCount(category.id)}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
 
           {/* Workouts List */}
-          <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
+          <ScrollView
+            className="flex-1 px-6"
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          >
             <View className="flex-row justify-between items-center mb-4">
-              <Text
-                style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-                className="text-gtkfText text-2xl font-bold"
-              >
-                Most Popular
-              </Text>
+              <View>
+                <Text
+                  style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
+                  className="text-gtkfText text-2xl font-bold"
+                >
+                  {selectedCategory === "all"
+                    ? "All Workouts"
+                    : `${selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} Workouts`}
+                </Text>
+                {filteredData && (
+                  <Text className="text-gray-500 text-sm mt-1">
+                    {filteredData.length} workout{filteredData.length !== 1 ? "s" : ""} found
+                  </Text>
+                )}
+              </View>
               <TouchableOpacity>
                 <Text style={{ fontFamily: "MontserratAlternates_700Bold" }} className="text-gray-400">
                   See All
@@ -129,61 +186,93 @@ export default function WorkoutsPage() {
             {isError && (
               <View className="flex-1 items-center justify-center py-8">
                 <Text className="text-red-500 text-lg mb-4">Failed to load workouts</Text>
-                <TouchableOpacity onPress={() => mutate({ type: "kids" })} className="bg-blue-500 px-6 py-3 rounded-lg">
-                  <Text className="text-white font-medium">Retry</Text>
-                </TouchableOpacity>
+                <Text className="text-gray-400 text-sm">Please check your connection and try refreshing the page</Text>
               </View>
             )}
 
             {/* Workout Cards */}
             {!isLoading && !isError && (
-              <View className="space-y-4 pb-6">
+              <View className="space-y-3 pb-6">
+                {(() => {
+                  console.log(
+                    "Rendering workouts - filteredData:",
+                    filteredData?.length || 0,
+                    "workouts:",
+                    workouts.length
+                  );
+                  console.log("Selected category:", selectedCategory);
+                  console.log("Filter fields:", filterFields);
+                  if (filteredData && filteredData.length > 0) {
+                    console.log("Sample filtered workout tags:", filteredData[0]?.tags);
+                  }
+                  return null;
+                })()}
                 {filteredData && filteredData.length > 0 ? (
                   filteredData.map((workout) => (
                     <TouchableOpacity
                       key={workout.id}
-                      onPress={() => handleWorkoutPress(workout.id)}
-                      className="bg-white rounded-2xl py-4 flex-row items-center shadow-sm border border-gray-100"
-                      activeOpacity={0.7}
+                      onPress={() => handleWorkoutPress(workout.slug || workout.id)}
+                      className="bg-white rounded-xl p-3 flex-row items-center border border-gray-50"
+                      activeOpacity={0.8}
+                      style={{
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.05,
+                        shadowRadius: 2,
+                        elevation: 1,
+                      }}
                     >
-                      <View className="w-20 h-20 bg-gray-200 rounded-2xl mr-4 items-center justify-center">
+                      <View className="w-16 h-16 bg-gray-50 rounded-lg mr-3 overflow-hidden items-center justify-center">
                         {workout.image ? (
-                          <Image
-                            source={{ uri: workout.image }}
-                            className="w-full h-full rounded-2xl"
-                            resizeMode="cover"
-                          />
+                          <Image source={{ uri: workout.image }} className="w-full h-full" resizeMode="cover" />
                         ) : (
-                          <Text className="text-gray-400 text-xs text-center">Image{"\n"}Placeholder</Text>
+                          <Ionicons name="fitness-outline" size={20} color="#9CA3AF" />
                         )}
                       </View>
-                      <View className="flex-1">
-                        <Text className="text-black text-lg font-bold mb-1">
+                      <View className="flex-1 pr-2">
+                        <Text className="text-gray-900 text-base font-semibold mb-1" numberOfLines={1}>
                           {workout.title || workout.name || "Workout Title"}
                         </Text>
-                        <Text className="text-gray-600 text-sm leading-4" numberOfLines={2}>
-                          {workout.description || "Workout description..."}
+                        <Text className="text-gray-500 text-sm leading-4 mb-2" numberOfLines={1}>
+                          {workout.description || "Workout description"}
                         </Text>
-                        {workout.duration && (
-                          <Text className="text-green-600 text-xs mt-1">Duration: {workout.duration} mins</Text>
-                        )}
+                        <View className="flex-row items-center justify-between">
+                          {workout.duration && (
+                            <View className="flex-row items-center">
+                              <Ionicons name="time-outline" size={12} color="#10B981" />
+                              <Text className="text-green-600 text-xs ml-1 font-medium">{workout.duration}min</Text>
+                            </View>
+                          )}
+                          {/* Show first tag */}
+                          {workout.tags && workout.tags.length > 0 && (
+                            <View className="bg-gray-100 px-2 py-0.5 rounded-full">
+                              <Text className="text-gray-600 text-xs font-medium capitalize">{workout.tags[0]}</Text>
+                            </View>
+                          )}
+                        </View>
                       </View>
                       <TouchableOpacity
-                        onPress={() => handleWorkoutPress(workout.id)}
-                        className="bg-gtkfText px-4 py-3 rounded-full ml-2"
+                        onPress={() => handleWorkoutPress(workout.slug)}
+                        className="bg-gray-900 px-4 py-2 rounded-lg"
                       >
-                        <Text className="font-medium text-sm text-white">Start</Text>
+                        <Text className="font-medium text-xs text-white">VIEW</Text>
                       </TouchableOpacity>
                     </TouchableOpacity>
                   ))
                 ) : (
-                  <View className="flex-1 items-center justify-center py-12">
-                    <Text className="text-gray-400 text-lg mt-4">
-                      {selectedCategory === "all" ? "No workouts available" : `No ${selectedCategory} workouts found`}
+                  <View className="flex-1 items-center justify-center py-12 px-6">
+                    <Text className="text-gray-700 text-lg font-semibold mb-1 text-center">
+                      {selectedCategory === "all" ? "No workouts available" : `No ${selectedCategory} workouts`}
+                    </Text>
+                    <Text className="text-gray-400 text-sm text-center mb-4">
+                      {selectedCategory === "all" ? "Check back later for new content" : "Try a different category"}
                     </Text>
                     {selectedCategory !== "all" && (
-                      <TouchableOpacity onPress={() => handleCategorySelect("all")} className="mt-3">
-                        <Text className="text-blue-500 text-sm">Show all workouts</Text>
+                      <TouchableOpacity
+                        onPress={() => handleCategorySelect("all")}
+                        className="bg-gray-100 px-4 py-2 rounded-lg"
+                      >
+                        <Text className="text-gray-700 text-sm font-medium">View All</Text>
                       </TouchableOpacity>
                     )}
                   </View>

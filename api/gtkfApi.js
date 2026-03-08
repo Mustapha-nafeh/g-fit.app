@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import apiClient from "./apiClient";
 
@@ -8,9 +8,9 @@ export const articlesApi = async (type) => {
   return response.data;
 };
 
-// GET ARTICLE BY ID
-export const articleByIdApi = async (id) => {
-  const response = await apiClient.post("/content/get-article-by-id", id);
+// GET ARTICLE BY SLUG
+export const articleBySlugApi = async (slug) => {
+  const response = await apiClient.post("/content/get-article", { slug: slug });
   return response.data;
 };
 
@@ -21,39 +21,51 @@ export const workoutsApi = async (type) => {
 };
 
 // GET WORKOUTS BY ID
-export const workoutByIdApi = async (id) => {
-  const response = await apiClient.post("/content/get-workout-by-id", id);
+export const workoutByIdApi = async (slug) => {
+  const response = await apiClient.post("/content/get-workout", { slug: slug });
   return response.data;
 };
 
 // ARTICLES HOOK
-export const useGetArticles = () => {
-  const mutation = useMutation({
-    mutationFn: articlesApi,
+export const useGetArticles = (type = "kids", enabled = true) => {
+  return useQuery({
+    queryKey: ["articles", type],
+    queryFn: () => articlesApi({ type }),
+    enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
   });
-  return mutation;
 };
 
-// ARTICLE BY ID HOOK
-export const useGetArticleById = () => {
-  const mutation = useMutation({
-    mutationFn: articleByIdApi,
+// ARTICLE BY SLUG HOOK
+export const useGetArticleBySlug = (slug, enabled = true) => {
+  return useQuery({
+    queryKey: ["article", slug],
+    queryFn: () => articleBySlugApi(slug),
+    enabled: enabled && !!slug,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
   });
-  return mutation;
 };
 
 // WORKOUTS HOOK
-export const useGetWorkouts = () => {
-  const mutation = useMutation({
-    mutationFn: workoutsApi,
+export const useGetWorkouts = (type = "kids", enabled = true) => {
+  return useQuery({
+    queryKey: ["workouts", type],
+    queryFn: () => workoutsApi({ type }),
+    enabled,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
   });
-  return mutation;
 };
 
 // WORKOUT BY ID HOOK
-export const useGetWorkoutByIdApi = () => {
-  const mutation = useMutation({
-    mutationFn: workoutByIdApi,
+export const useGetWorkoutById = (slug, enabled = true) => {
+  return useQuery({
+    queryKey: ["workout", slug],
+    queryFn: () => workoutByIdApi(slug),
+    enabled: enabled && !!slug,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
   });
-  return mutation;
 };

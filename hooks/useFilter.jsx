@@ -60,16 +60,22 @@ const useFilterData = (initialData = [], initialFields = {}) => {
           return false;
         }
 
+        if (Array.isArray(itemValue)) {
+          // For arrays (like tags), check if any element matches the filter value
+          return itemValue.some((v) => {
+            if (typeof v === "string") {
+              return v.toLowerCase().includes(value.toLowerCase());
+            }
+            return v?.toString().toLowerCase().includes(value.toLowerCase());
+          });
+        }
+
         if (typeof itemValue === "string") {
           return itemValue.toLowerCase().includes(value.toLowerCase());
         }
 
         if (typeof itemValue === "number") {
           return itemValue === Number(value);
-        }
-
-        if (Array.isArray(itemValue)) {
-          return itemValue.some((v) => v?.toString().toLowerCase().includes(value.toLowerCase()));
         }
 
         if (typeof itemValue === "boolean") {

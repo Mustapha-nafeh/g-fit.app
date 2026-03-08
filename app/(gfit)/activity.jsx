@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StatusBar, SafeAreaView, ScrollView } fro
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import { Pedometer } from "expo-sensors";
 import { useSaveSteps, useGetWeeklySteps, useGetSteps, useGetMemberSteps } from "../../api/fitnessApi";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -10,12 +11,13 @@ export default function FitnessHomeDashboard() {
   const [userName, setUserName] = useState("Youssef");
   const [weeklySteps, setWeeklySteps] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPedometerAvailable, setIsPedometerAvailable] = useState(false);
 
   const getMemberStepsMutation = useGetMemberSteps();
 
   useEffect(() => {
     loadUserData();
-    loadWeeklyStepsData();
+    initializePedometer();
   }, []);
 
   const loadUserData = async () => {
@@ -31,7 +33,59 @@ export default function FitnessHomeDashboard() {
     }
   };
 
-  const loadWeeklyStepsData = async () => {
+  const initializePedometer = async () => {
+    try {
+      const isAvailable = await Pedometer.isAvailableAsync();
+      setIsPedometerAvailable(isAvailable);
+
+      if (isAvailable) {
+        // Get weekly steps from device
+        await getWeeklyStepsFromDevice();
+      } else {
+        // Fallback to API data if pedometer not available
+        await loadWeeklyStepsFromBackend();
+      }
+    } catch (error) {
+      console.error("Pedometer initialization error:", error);
+      // Fallback to demo data if both pedometer and API fail
+      loadDemoWeeklySteps();
+      setIsLoading(false);
+    }
+  };
+
+  const getWeeklyStepsFromDevice = async () => {
+    try {
+      setIsLoading(true);
+      const weekSteps = [];
+      const today = new Date();
+
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        date.setHours(0, 0, 0, 0);
+
+        const endDate = new Date(date);
+        endDate.setHours(23, 59, 59, 999);
+
+        try {
+          const daySteps = await Pedometer.getStepCountAsync(date, endDate);
+          weekSteps.push(daySteps.steps);
+        } catch (error) {
+          console.error(`Error getting steps for ${date.toDateString()}:`, error);
+          weekSteps.push(0); // Fallback to 0 for failed days
+        }
+      }
+
+      setWeeklySteps(weekSteps);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error getting weekly steps from device:", error);
+      // Fallback to backend data
+      await loadWeeklyStepsFromBackend();
+    }
+  };
+
+  const loadWeeklyStepsFromBackend = async () => {
     try {
       setIsLoading(true);
 
@@ -67,7 +121,7 @@ export default function FitnessHomeDashboard() {
         }
       );
     } catch (error) {
-      console.error("Error in loadWeeklyStepsData:", error);
+      console.error("Error in loadWeeklyStepsFromBackend:", error);
       loadDemoWeeklySteps();
       setIsLoading(false);
     }
@@ -128,7 +182,10 @@ export default function FitnessHomeDashboard() {
             <Text style={{ fontFamily: "MontserratAlternates_600SemiBold" }} className="text-white text-2xl mb-1">
               7-Day Steps
             </Text>
-            <Text className="text-gray-400 text-sm">Average: {avgSteps.toLocaleString()} steps</Text>
+            <Text className="text-gray-400 text-sm">
+              Average: {avgSteps.toLocaleString()} steps
+              {isPedometerAvailable && <Text className="text-green-400"> • Live data</Text>}
+            </Text>
           </View>
           <View className="flex-row items-center">
             <View className="w-3 h-3 bg-cyan-400 rounded-full mr-2" />
@@ -250,6 +307,18 @@ export default function FitnessHomeDashboard() {
 
           {/* Chart Section */}
           <CustomChart />
+
+          {/* Pedometer Status */}
+          {!isPedometerAvailable && (
+            <View className="px-6 mb-6">
+              <View className="bg-yellow-500/20 border border-yellow-500/50 rounded-xl p-3">
+                <View className="flex-row items-center">
+                  <Ionicons name="warning" size={20} color="#F59E0B" style={{ marginRight: 8 }} />
+                  <Text className="text-yellow-400 text-sm">Pedometer not available. Showing demo data.</Text>
+                </View>
+              </View>
+            </View>
+          )}
 
           <View className="h-24" />
         </ScrollView>

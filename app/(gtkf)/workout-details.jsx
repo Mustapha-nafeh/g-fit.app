@@ -1,311 +1,459 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert, Share, Clipboard, Linking } from "react-native";
+"use client";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Alert,
+  Share,
+  Clipboard,
+  Linking,
+  StatusBar,
+  ActivityIndicator,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import { getShareableWorkoutLinks } from "../../utils/deepLinks";
+import { useGetWorkoutById } from "../../api/gtkfApi";
+import { showToast } from "../../constants";
 
+// ─── Pill badge ──────────────────────────────────────────────────────────────
+const Badge = ({ icon, label, color = "#10B981", bg = "#D1FAE5" }) => (
+  <View
+    style={{
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: bg,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 20,
+    }}
+  >
+    <Ionicons name={icon} size={13} color={color} />
+    <Text style={{ color, fontSize: 12, fontWeight: "600", marginLeft: 4 }}>{label}</Text>
+  </View>
+);
+
+// ─── Icon action button ───────────────────────────────────────────────────────
+const IconBtn = ({ icon, onPress, active, activeColor = "#EC4899", size = 20 }) => (
+  <TouchableOpacity
+    onPress={onPress}
+    style={{
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: active ? activeColor + "18" : "#F3F4F6",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <Ionicons name={icon} size={size} color={active ? activeColor : "#6B7280"} />
+  </TouchableOpacity>
+);
+
+// ─── Exercise row ─────────────────────────────────────────────────────────────
+const ExerciseRow = ({ exercise, index }) => (
+  <View
+    style={{
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: "#F3F4F6",
+    }}
+  >
+    <View
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        backgroundColor: "#0EA5E910",
+        alignItems: "center",
+        justifyContent: "center",
+        marginRight: 12,
+      }}
+    >
+      <Text style={{ fontSize: 12, fontWeight: "700", color: "#0EA5E9" }}>{index + 1}</Text>
+    </View>
+    <Text style={{ flex: 1, fontSize: 15, color: "#1F2937", fontWeight: "500" }}>
+      {exercise.name || exercise.title}
+    </Text>
+    {(exercise.duration || exercise.time) && (
+      <Text style={{ fontSize: 13, color: "#9CA3AF" }}>{exercise.duration || exercise.time}</Text>
+    )}
+  </View>
+);
+
+// ─── Loading skeleton ─────────────────────────────────────────────────────────
+const LoadingState = () => (
+  <View style={{ flex: 1, backgroundColor: "#0F172A", alignItems: "center", justifyContent: "center" }}>
+    <ActivityIndicator size="large" color="#0EA5E9" />
+    <Text style={{ color: "#94A3B8", marginTop: 16, fontSize: 15 }}>Loading workout…</Text>
+  </View>
+);
+
+// ─── Error state ──────────────────────────────────────────────────────────────
+const ErrorState = () => (
+  <View style={{ flex: 1, backgroundColor: "#0F172A", alignItems: "center", justifyContent: "center", padding: 32 }}>
+    <View
+      style={{
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: "#FEE2E2",
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: 20,
+      }}
+    >
+      <Ionicons name="alert-circle-outline" size={34} color="#DC2626" />
+    </View>
+    <Text style={{ color: "white", fontSize: 20, fontWeight: "700", marginBottom: 8, textAlign: "center" }}>
+      Failed to Load
+    </Text>
+    <Text style={{ color: "#94A3B8", fontSize: 14, textAlign: "center", lineHeight: 22, marginBottom: 28 }}>
+      Something went wrong fetching workout details. Please try again.
+    </Text>
+    <TouchableOpacity
+      onPress={() => router.back()}
+      style={{ backgroundColor: "#1E293B", paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12 }}
+    >
+      <Text style={{ color: "white", fontWeight: "600" }}>Go Back</Text>
+    </TouchableOpacity>
+  </View>
+);
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function WorkoutPage() {
-  const { id } = useLocalSearchParams();
-  const [workout, setWorkout] = useState(null);
+  const { slug } = useLocalSearchParams();
   const [isFavorite, setIsFavorite] = useState(false);
 
-  // Demo workout data - replace with actual API call
-  const workoutsList = [
-    {
-      id: "1",
-      title: "Full Body Kids Workout",
-      description: "A fun and engaging full body workout designed specifically for kids.",
-      duration: 15,
-      difficulty: "Beginner",
-      videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", // Demo video URL
-      exercises: [
-        { name: "Jumping Jacks", duration: "30 seconds" },
-        { name: "Bear Crawl", duration: "30 seconds" },
-        { name: "Mountain Climbers", duration: "30 seconds" },
-      ],
-    },
-    {
-      id: "2",
-      title: "Cardio Fun Time",
-      description: "Get your heart pumping with these fun cardio exercises.",
-      duration: 20,
-      difficulty: "Intermediate",
-      videoUrl: "https://www.youtube.com/watch?v=L_jWHffIx5E", // Demo video URL
-      exercises: [
-        { name: "High Knees", duration: "45 seconds" },
-        { name: "Burpees", duration: "30 seconds" },
-        { name: "Jump Rope", duration: "60 seconds" },
-      ],
-    },
-  ];
+  // ✅ Fixed: use query, not mutation
+  const { data, isLoading, isError } = useGetWorkoutById(slug, {
+    enabled: !!slug,
+    onError: () => showToast("error", "Error", "Failed to load workout details"),
+  });
 
-  useEffect(() => {
-    const found = workoutsList.find((w) => w.id === "1");
-    setWorkout(found);
-  }, []);
+  const workout = data?.data ?? null;
 
-  const handleBack = () => {
-    router.back();
-  };
-
-  // Handle adding/removing from favorites
-  const handleToggleFavorite = () => {
-    setIsFavorite(!isFavorite);
-    Alert.alert(
-      isFavorite ? "Removed from Favorites" : "Added to Favorites",
-      isFavorite
-        ? "This workout has been removed from your favorites."
-        : "This workout has been added to your favorites!"
-    );
-  };
-
-  // Handle sharing the workout
+  // ─── Handlers ────────────────────────────────────────────────────────────
   const handleShare = async () => {
-    if (!workout) {
-      Alert.alert("Error", "Workout not found");
-      return;
-    }
-
+    if (!workout) return;
     try {
-      const { appLink, webLink } = getShareableWorkoutLinks(id, workout);
-
-      const shareMessage = `🏃‍♀️ Check out this amazing workout: ${workout.title}!
-
-⏱️ Duration: ${workout.duration} minutes
-📊 Difficulty: ${workout.difficulty}
-
-📝 ${workout.description}
-
-📱 Open in GTKF app: ${appLink}
-🌐 Or visit online: ${webLink}
-
-#GTKF #KidsWorkout #Fitness`;
-
-      const result = await Share.share({
-        message: shareMessage,
-        title: `${workout.title} - GTKF Kids Workout`,
-        url: appLink, // iOS will use this as the primary link
+      const { appLink } = getShareableWorkoutLinks(slug, workout);
+      await Share.share({
+        message: `🏃 Check out "${workout.title}" on GTKF!\n\n${workout.description}\n\n${appLink}`,
+        title: workout.title,
+        url: appLink,
       });
-
-      if (result.action === Share.sharedAction) {
-        console.log("Workout shared successfully");
-        Alert.alert("Shared! 🎉", "Workout link has been shared successfully");
-      } else if (result.action === Share.dismissedAction) {
-        console.log("Share dismissed");
-      }
-    } catch (error) {
-      console.error("Share error:", error);
-      Alert.alert("Error", "Failed to share workout. Please try again.");
+    } catch {
+      Alert.alert("Error", "Failed to share workout.");
     }
   };
 
-  // Handle copying workout link to clipboard
   const handleCopyLink = async () => {
-    if (!workout || !id) {
-      Alert.alert("Error", "Workout not found");
-      return;
-    }
-
+    if (!workout || !slug) return;
     try {
-      const { appLink } = getShareableWorkoutLinks(id, workout);
+      const { appLink } = getShareableWorkoutLinks(slug, workout);
       await Clipboard.setString(appLink);
-      Alert.alert("Copied! 📋", "Workout link has been copied to clipboard");
-    } catch (error) {
-      console.error("Copy error:", error);
-      Alert.alert("Error", "Failed to copy link. Please try again.");
+      showToast("success", "Copied!", "Workout link copied to clipboard");
+    } catch {
+      Alert.alert("Error", "Failed to copy link.");
     }
   };
 
-  // Handle playing workout video
-  const handlePlayVideo = async () => {
-    if (!workout?.videoUrl) {
-      Alert.alert("No Video Available", "This workout does not have a video tutorial yet.");
+  const openVideo = async () => {
+    const videoUrl = workout?.video_url || workout?.videoUrl;
+    if (!videoUrl) {
+      Alert.alert("No Video", "This workout doesn't have a video yet.");
       return;
     }
-
     try {
-      const supported = await Linking.canOpenURL(workout.videoUrl);
-      if (supported) {
-        await Linking.openURL(workout.videoUrl);
-      } else {
-        Alert.alert("Error", "Unable to open video. Please try again later.");
-      }
-    } catch (error) {
-      console.error("Error opening video:", error);
-      Alert.alert("Error", "Failed to open video. Please check your connection and try again.");
+      const ok = await Linking.canOpenURL(videoUrl);
+      if (ok) await Linking.openURL(videoUrl);
+      else Alert.alert("Error", "Unable to open video.");
+    } catch {
+      Alert.alert("Error", "Failed to open video.");
     }
   };
 
-  // Handle starting the workout
-  const handleStartWorkout = async () => {
-    if (!workout?.videoUrl) {
-      Alert.alert("No Video Available", "This workout does not have a video tutorial yet.");
-      return;
-    }
+  // ─── Render guards ────────────────────────────────────────────────────────
+  if (isLoading) return <LoadingState />;
+  if (isError) return <ErrorState />;
 
-    try {
-      const supported = await Linking.canOpenURL(workout.videoUrl);
-      if (supported) {
-        await Linking.openURL(workout.videoUrl);
-      } else {
-        Alert.alert("Error", "Unable to open workout video. Please try again later.");
-      }
-    } catch (error) {
-      console.error("Error opening workout video:", error);
-      Alert.alert("Error", "Failed to open workout video. Please check your connection and try again.");
-    }
-  };
-
-  const relatedArticles = [
-    {
-      id: 1,
-      placeholder: "Exercise Image 1",
-    },
-    {
-      id: 2,
-      placeholder: "Exercise Image 2",
-    },
-  ];
+  const hasVideo = !!(workout?.video_url || workout?.videoUrl);
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-800" edges={["top"]}>
-      <ScrollView className="flex-1 pb-32">
-        {/* Header */}
-        <View className="flex-row justify-between items-center px-6 py-4">
-          <View className="flex-row items-center space-x-3">
-            <TouchableOpacity onPress={handleBack} className="mt-0.5">
-              <Ionicons name="chevron-back" size={24} color="white" />
-            </TouchableOpacity>
-            <Text className="text-white text-xl font-bold">Workout Details</Text>
-          </View>
-          <TouchableOpacity onPress={handleShare}>
-            <Ionicons name="share-outline" size={24} color="white" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#0F172A" }} edges={["top"]}>
+      <StatusBar barStyle="light-content" />
+
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 140 }}
+      >
+        {/* ── Top nav ── */}
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingHorizontal: 20,
+            paddingVertical: 14,
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "#1E293B",
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 20,
+              gap: 4,
+            }}
+          >
+            <Ionicons name="chevron-back" size={18} color="white" />
+            <Text style={{ color: "white", fontSize: 14, fontWeight: "600" }}>Back</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleShare}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 19,
+              backgroundColor: "#1E293B",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="share-outline" size={19} color="white" />
           </TouchableOpacity>
         </View>
 
-        {/* Main Workout Image with Play Button */}
-        <TouchableOpacity onPress={handlePlayVideo} activeOpacity={0.8}>
-          <View className="mx-6 mb-4 bg-gray-300 rounded-2xl h-80 items-center justify-center relative">
-            {/* Background content */}
-            <Text className="text-gray-500 text-lg font-medium">{workout?.title || "Workout Image"}</Text>
-            <Text className="text-gray-400 text-sm mt-2">{workout?.difficulty || "Difficulty Level"}</Text>
+        {/* ── Hero image / video thumb ── */}
+        <TouchableOpacity onPress={openVideo} activeOpacity={0.9} style={{ marginHorizontal: 20, marginBottom: 6 }}>
+          <View
+            style={{
+              height: 300,
+              borderRadius: 24,
+              overflow: "hidden",
+              backgroundColor: "#1E293B",
+            }}
+          >
+            {workout?.image ? (
+              <Image source={{ uri: workout.image }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+            ) : (
+              <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name="barbell-outline" size={48} color="#334155" />
+              </View>
+            )}
 
-            {/* Play Button Overlay */}
-            <View className="absolute inset-0 items-center justify-center">
-              <View className="bg-black/60 rounded-full p-4 shadow-lg">
-                <View className="bg-white rounded-full p-3">
-                  <Ionicons name="play" size={32} color="#374151" style={{ marginLeft: 3 }} />
-                </View>
+            {/* Gradient overlay */}
+            <LinearGradient
+              colors={["transparent", "rgba(0,0,0,0.55)"]}
+              style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 120 }}
+            />
+
+            {/* Play button */}
+            <View style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}>
+              <View
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 32,
+                  backgroundColor: "rgba(255,255,255,0.18)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: 1.5,
+                  borderColor: "rgba(255,255,255,0.35)",
+                }}
+              >
+                <Ionicons name="play" size={28} color="white" style={{ marginLeft: 3 }} />
               </View>
             </View>
 
-            {/* Video indicator */}
-            <View className="absolute top-4 right-4 bg-black/70 px-2 py-1 rounded-full flex-row items-center">
-              <Ionicons name="videocam" size={14} color="white" />
-              <Text className="text-white text-xs ml-1">Video</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-
-        {/* Article Content Section */}
-        <View className="bg-white flex-1 rounded-3xl pt-6  mb-10">
-          {/* Article Header */}
-          <View className="px-6 mb-4">
-            <View className="flex-row justify-between items-start mb-3">
-              <Text className="text-gray-900 text-2xl font-bold flex-1">{workout?.title || "Workout Title"}</Text>
-              <View className="flex-row space-x-2 ml-4">
-                <TouchableOpacity
-                  onPress={handleToggleFavorite}
-                  className={`w-10 h-10 rounded-full items-center justify-center ${
-                    isFavorite ? "bg-pink-500" : "bg-gray-200"
-                  }`}
-                >
-                  <Ionicons
-                    name={isFavorite ? "heart" : "heart-outline"}
-                    size={20}
-                    color={isFavorite ? "white" : "gray"}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleShare}
-                  className="w-10 h-10 bg-gray-200 rounded-full items-center justify-center"
-                >
-                  <Ionicons name="share-outline" size={20} color="gray" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Duration and Difficulty */}
-            <View className="flex-row items-center mb-6 space-x-4">
-              <View className="flex-row items-center">
-                <Ionicons name="time-outline" size={16} color="#10B981" />
-                <Text className="text-gray-600 ml-1 font-medium">
-                  {workout?.duration ? `${workout.duration} mins` : "Duration: N/A"}
-                </Text>
-              </View>
-              <View className="flex-row items-center">
-                <Ionicons name="fitness-outline" size={16} color="#EAB308" />
-                <Text className="text-gray-600 ml-1 font-medium">{workout?.difficulty || "Beginner"}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Workout Description */}
-          <View className="px-6 mb-8">
-            <Text className="text-gray-600 text-base leading-6 mb-4">
-              {workout?.description ||
-                "This is a comprehensive workout designed to help you stay fit and healthy. Perfect for all fitness levels."}
-            </Text>
-
-            {/* Exercise List */}
-            {workout?.exercises && (
-              <View>
-                <Text className="text-gray-900 text-lg font-bold mb-3">Exercises:</Text>
-                {workout.exercises.map((exercise, index) => (
-                  <View key={index} className="flex-row items-center justify-between py-2 border-b border-gray-100">
-                    <Text className="text-gray-700 text-base">{exercise.name}</Text>
-                    <Text className="text-gray-500 text-sm">{exercise.duration}</Text>
-                  </View>
-                ))}
+            {/* Video badge */}
+            {hasVideo && (
+              <View
+                style={{
+                  position: "absolute",
+                  top: 14,
+                  right: 14,
+                  backgroundColor: "rgba(0,0,0,0.6)",
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                <Ionicons name="videocam" size={12} color="#0EA5E9" />
+                <Text style={{ color: "white", fontSize: 11, fontWeight: "600", marginLeft: 4 }}>Video</Text>
               </View>
             )}
           </View>
+        </TouchableOpacity>
+
+        {/* ── White card content ── */}
+        <View
+          style={{
+            backgroundColor: "white",
+            marginHorizontal: 0,
+            marginTop: 12,
+            borderTopLeftRadius: 32,
+            borderTopRightRadius: 32,
+            paddingTop: 28,
+            paddingHorizontal: 24,
+            minHeight: 500,
+          }}
+        >
+          {/* Title row */}
+          <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 14 }}>
+            <Text style={{ flex: 1, fontSize: 24, fontWeight: "800", color: "#0F172A", lineHeight: 30 }}>
+              {workout?.title || workout?.name || "Workout"}
+            </Text>
+            <View style={{ flexDirection: "row", gap: 8, marginLeft: 12 }}>
+              <IconBtn
+                icon={isFavorite ? "heart" : "heart-outline"}
+                onPress={() => setIsFavorite((v) => !v)}
+                active={isFavorite}
+                activeColor="#EC4899"
+              />
+              <IconBtn icon="copy-outline" onPress={handleCopyLink} />
+            </View>
+          </View>
+
+          {/* Badges */}
+          <View style={{ flexDirection: "row", gap: 8, marginBottom: 22, flexWrap: "wrap" }}>
+            {workout?.duration && (
+              <Badge icon="time-outline" label={`${workout.duration} mins`} color="#0EA5E9" bg="#E0F2FE" />
+            )}
+            {(workout?.difficulty || workout?.difficulty_level) && (
+              <Badge
+                icon="fitness-outline"
+                label={workout.difficulty || workout.difficulty_level}
+                color="#F59E0B"
+                bg="#FEF3C7"
+              />
+            )}
+            {workout?.exercises?.length > 0 && (
+              <Badge icon="list-outline" label={`${workout.exercises.length} exercises`} color="#8B5CF6" bg="#EDE9FE" />
+            )}
+          </View>
+
+          {/* Divider */}
+          <View style={{ height: 1, backgroundColor: "#F1F5F9", marginBottom: 20 }} />
+
+          {/* Description */}
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: "600",
+              color: "#64748B",
+              letterSpacing: 0.8,
+              marginBottom: 8,
+              textTransform: "uppercase",
+            }}
+          >
+            About
+          </Text>
+          <Text style={{ fontSize: 15, color: "#374151", lineHeight: 24, marginBottom: 28 }}>
+            {workout?.description ||
+              workout?.content ||
+              "A comprehensive workout designed to help you stay fit and healthy. Perfect for all fitness levels."}
+          </Text>
+
+          {/* Exercise list */}
+          {workout?.exercises?.length > 0 && (
+            <>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "600",
+                  color: "#64748B",
+                  letterSpacing: 0.8,
+                  marginBottom: 4,
+                  textTransform: "uppercase",
+                }}
+              >
+                Exercises
+              </Text>
+              {workout.exercises.map((exercise, index) => (
+                <ExerciseRow key={index} exercise={exercise} index={index} />
+              ))}
+            </>
+          )}
         </View>
       </ScrollView>
 
-      {/* Bottom Button */}
-      <View className="bg-white px-6 pb-6 pt-4 ">
+      {/* ── Bottom CTA ── */}
+      <View
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: "white",
+          paddingHorizontal: 24,
+          paddingTop: 16,
+          paddingBottom: 34,
+          borderTopWidth: 1,
+          borderTopColor: "#F1F5F9",
+        }}
+      >
+        {/* Start button */}
         <TouchableOpacity
-          onPress={handleStartWorkout}
-          className="py-4 rounded-2xl items-center bg-cyan-400"
+          onPress={openVideo}
+          style={{
+            backgroundColor: "#0EA5E9",
+            paddingVertical: 16,
+            borderRadius: 16,
+            alignItems: "center",
+            flexDirection: "row",
+            justifyContent: "center",
+            gap: 8,
+            shadowColor: "#0EA5E9",
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.35,
+            shadowRadius: 12,
+            elevation: 6,
+          }}
         >
-          <View className="flex-row items-center">
-            <Text className="text-lg font-bold text-gray-700">Start Workout</Text>
-          </View>
+          <Ionicons name="play-circle-outline" size={22} color="white" />
+          <Text style={{ color: "white", fontSize: 16, fontWeight: "700" }}>Start Workout</Text>
         </TouchableOpacity>
 
-        {/* Secondary Actions */}
-        <View className="flex-row justify-center items-center mt-4 space-x-4">
-          <TouchableOpacity onPress={handleToggleFavorite} className="flex-row items-center">
+        {/* Secondary row */}
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: 28, marginTop: 14 }}>
+          <TouchableOpacity
+            onPress={() => setIsFavorite((v) => !v)}
+            style={{ flexDirection: "row", alignItems: "center", gap: 5 }}
+          >
             <Ionicons
               name={isFavorite ? "heart" : "heart-outline"}
-              size={18}
+              size={17}
               color={isFavorite ? "#EC4899" : "#9CA3AF"}
             />
-            <Text className={`ml-1 text-sm ${isFavorite ? "text-pink-500" : "text-gray-400"}`}>
-              {isFavorite ? "Favorited" : "Favorite"}
+            <Text style={{ fontSize: 13, color: isFavorite ? "#EC4899" : "#9CA3AF", fontWeight: "500" }}>
+              {isFavorite ? "Saved" : "Save"}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleShare} className="flex-row items-center">
-            <Ionicons name="share-outline" size={18} color="#9CA3AF" />
-            <Text className="ml-1 text-sm text-gray-400">Share</Text>
+          <TouchableOpacity onPress={handleShare} style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+            <Ionicons name="share-outline" size={17} color="#9CA3AF" />
+            <Text style={{ fontSize: 13, color: "#9CA3AF", fontWeight: "500" }}>Share</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={handleCopyLink} className="flex-row items-center">
-            <Ionicons name="copy-outline" size={18} color="#9CA3AF" />
-            <Text className="ml-1 text-sm text-gray-400">Copy Link</Text>
+          <TouchableOpacity onPress={handleCopyLink} style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+            <Ionicons name="copy-outline" size={17} color="#9CA3AF" />
+            <Text style={{ fontSize: 13, color: "#9CA3AF", fontWeight: "500" }}>Copy Link</Text>
           </TouchableOpacity>
         </View>
       </View>

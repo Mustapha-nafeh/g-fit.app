@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Image } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Image, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -12,26 +12,28 @@ import GtkfHeader from "../../global-components/GtkfHeader";
 export default function ArticlesPage() {
   const [articles, setArticles] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [refreshing, setRefreshing] = useState(false);
 
   // Filter hook
   const { filterFields, setFilterFields, filteredData } = useFilterData(articles, {});
 
-  const { mutate, data, isLoading, isError } = useGetArticles();
+  const { data, isLoading, isError, error, refetch } = useGetArticles("kids");
+
+  // Update articles when data is fetched
   useEffect(() => {
-    mutate(
-      { type: "kids" },
-      {
-        onSuccess: (response) => {
-          console.log("Articles fetched successfully:", response);
-          setArticles(response.data || []);
-        },
-        onError: (error) => {
-          console.error("Error fetching articles:", error);
-          showToast("error", "Error", error.response?.data?.message || "An error occurred");
-        },
-      }
-    );
-  }, []);
+    if (data?.data) {
+      console.log("Articles fetched successfully:", data);
+      setArticles(data.data);
+    }
+  }, [data]);
+
+  // Show error toast when there's an error
+  useEffect(() => {
+    if (isError && error) {
+      console.error("Error fetching articles:", error);
+      showToast("error", "Error", error.response?.data?.message || "Failed to load articles");
+    }
+  }, [isError, error]);
 
   // Article categories for filtering
   const articleCategories = [
@@ -52,9 +54,23 @@ export default function ArticlesPage() {
     }
   };
 
-  const ReadMore = (id) => {
-    console.log("Read more pressed for article id:", id);
-    router.push(`/(gtkf)/article-details?id=${id}`);
+  const ReadMore = (slug) => {
+    console.log("Read more pressed for article slug:", slug);
+    router.push(`/(gtkf)/article-details?slug=${slug}`);
+  };
+
+  // Handle pull to refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+      showToast("success", "Success", "Articles refreshed successfully");
+    } catch (error) {
+      console.error("Error refreshing articles:", error);
+      showToast("error", "Error", "Failed to refresh articles");
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   return (
@@ -103,7 +119,11 @@ export default function ArticlesPage() {
           </ScrollView>
 
           {/* Articles List */}
-          <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
+          <ScrollView
+            className="flex-1 px-6"
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          >
             {/* Loading State */}
             {isLoading && (
               <View className="flex-1 justify-center items-center py-10">
@@ -152,7 +172,7 @@ export default function ArticlesPage() {
                 {/* Article Cards */}
                 <View className="space-y-4 pb-6">
                   {filteredData.map((article) => (
-                    <View key={article.id} className="bg-white rounded-2xl py-4 flex-row items-center">
+                    <View key={article.slug || article.id} className="bg-white rounded-2xl py-4 flex-row items-center">
                       <View className="w-20 h-20 bg-gray-200 rounded-2xl mr-4 items-center justify-center">
                         <Text className="text-gray-400 text-xs text-center">Image{"\n"}Placeholder</Text>
                       </View>
@@ -163,7 +183,7 @@ export default function ArticlesPage() {
                         </Text>
                       </View>
                       <TouchableOpacity
-                        onPress={() => ReadMore(article.id)}
+                        onPress={() => ReadMore(article.slug || article.id)}
                         className="bg-gtkfText px-4 py-3 rounded-full ml-2"
                       >
                         <Text className="font-medium text-sm">Read more</Text>

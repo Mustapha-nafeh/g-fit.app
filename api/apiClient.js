@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { showToast } from "../constants";
 
 const apiClient = axios.create({
-  baseURL: "https://g-fit.app/api/v1", // Your API base URL
+  baseURL: "https://backend.g-fit.app/api/v1", // Your API base URL
   headers: {
     "Content-Type": "application/json",
   },

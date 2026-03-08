@@ -63,13 +63,13 @@ export const openDeepLink = async (path, params = {}) => {
 
 /**
  * Get shareable links for a workout
- * @param {string} workoutId - The workout ID
+ * @param {string} workoutSlug - The workout ID
  * @param {Object} workout - The workout object
  * @returns {Object} - Object containing app link and web link
  */
-export const getShareableWorkoutLinks = (workoutId, workout) => {
-  const appLink = generateDeepLink("workout-details", { id: workoutId });
-  const webLink = generateWebLink(`workout/${workoutId}`, {
+export const getShareableWorkoutLinks = (workoutSlug, workout) => {
+  const appLink = generateDeepLink("workout-details", { slug: workoutSlug });
+  const webLink = generateWebLink(`workout/${workoutSlug}`, {
     title: workout?.title?.replace(/\s+/g, "-").toLowerCase(),
   });
 

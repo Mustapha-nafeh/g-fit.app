@@ -67,6 +67,15 @@ export default function GfitLayout() {
         }}
       />
       <Tabs.Screen
+        name="challenges"
+        options={{
+          title: "Challenges",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? "flag" : "flag-outline"} size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="leaderboard"
         options={{
           title: "Leaderboard",

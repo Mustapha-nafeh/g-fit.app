@@ -48,21 +48,21 @@ const AppSelectionScreen = () => {
     {
       id: "gfit",
       title: "G-Fit",
-      subtitle: "Steps counter",
-      icon: "footsteps",
-      backgroundColor: "bg-gray-600",
+      subtitle: "Families Steps competitions.",
+      backgroundColor: "bg-gray-300",
+      image: require("../../assets/G-FIT 3.png"),
     },
     {
       id: "adults",
       title: "Adults kit",
-      subtitle: "Best for adults",
+      subtitle: "Adults fitness and wellness",
       backgroundColor: "bg-gray-300",
       placeholder: "ADULT",
     },
     {
       id: "gtkf",
       title: "Kids Kit",
-      subtitle: "Best for kids",
+      subtitle: "Kids fitness and wellness",
       backgroundColor: "bg-gray-300",
       placeholder: "KIDS",
       image: require("../../assets/getthekidsfit.png"),
@@ -85,14 +85,14 @@ const AppSelectionScreen = () => {
 
         {/* Title Section */}
         <View className="mb-12">
-          <Text
+          {/* <Text
             style={{ fontFamily: "MontserratAlternates_700Bold" }}
             className="text-white text-4xl leading-tight mb-4"
           >
-            Start your{"\n"}Fitness Journey
-          </Text>
+            Levels.
+          </Text> */}
           <Text style={{ fontFamily: "MontserratAlternates_700Bold" }} className="text-white text-2xl">
-            Please choose{"\n"}your app!
+            Please choose{"\n"}your app.
           </Text>
         </View>
 

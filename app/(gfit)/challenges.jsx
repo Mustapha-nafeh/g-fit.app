@@ -425,75 +425,194 @@ export default function ChallengesPage() {
       <Modal
         visible={!!selectedChallenge}
         transparent={true}
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setSelectedChallenge(null)}
       >
-        <View className="flex-1 bg-black/70 justify-end">
-          <View className="bg-gray-900 rounded-t-3xl max-h-3/4">
+        <View className="flex-1 bg-black/50 justify-center px-4">
+          <View
+            className="bg-gray-900 rounded-3xl overflow-hidden border border-gray-700/50 max-h-4/5"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 20 },
+              shadowOpacity: 0.5,
+              shadowRadius: 25,
+              elevation: 25,
+            }}
+          >
             {selectedChallenge && (
               <>
-                {/* Modal Header */}
-                <View className="flex-row justify-between items-center p-6 border-b border-gray-800">
-                  <Text style={{ fontFamily: "MontserratAlternates_600SemiBold" }} className="text-white text-xl">
-                    Challenge Details
-                  </Text>
-                  <TouchableOpacity onPress={() => setSelectedChallenge(null)}>
-                    <View className="w-10 h-10 bg-gray-800 rounded-full items-center justify-center">
-                      <Ionicons name="close" size={24} color="white" />
+                {/* Modal Header with Gradient */}
+                <LinearGradient
+                  colors={["#06B6D4", "#3B82F6", "#8B5CF6"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  className="px-6 py-6"
+                >
+                  <View className="flex-row justify-between items-center">
+                    <View className="flex-1">
+                      <Text style={{ fontFamily: "MontserratAlternates_700Bold" }} className="text-white text-2xl mb-1">
+                        Challenge Details
+                      </Text>
+                      <Text className="text-white/80 text-sm">
+                        {selectedChallenge.title_en || selectedChallenge.title}
+                      </Text>
                     </View>
-                  </TouchableOpacity>
-                </View>
+                    <TouchableOpacity
+                      onPress={() => setSelectedChallenge(null)}
+                      className="w-12 h-12 bg-white/20 backdrop-blur rounded-2xl items-center justify-center"
+                      style={{
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 4,
+                      }}
+                    >
+                      <Ionicons name="close" size={24} color="white" />
+                    </TouchableOpacity>
+                  </View>
+                </LinearGradient>
 
-                <ScrollView className="px-6 py-4" showsVerticalScrollIndicator={false}>
-                  <Text className="text-white text-xl font-bold mb-2">
-                    {selectedChallenge.title_en || selectedChallenge.title}
-                  </Text>
-                  <Text className="text-gray-300 text-sm mb-6">
-                    {selectedChallenge.content_en || selectedChallenge.description}
-                  </Text>
+                <ScrollView className="px-6 py-6" showsVerticalScrollIndicator={false}>
+                  {/* Description Card */}
+                  <View
+                    className="bg-gray-800/50 backdrop-blur rounded-2xl p-5 mb-6 border border-gray-700/30"
+                    style={{
+                      shadowColor: "#06B6D4",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 8,
+                    }}
+                  >
+                    <View className="flex-row items-center mb-3">
+                      <View className="w-8 h-8 bg-cyan-500/20 rounded-xl items-center justify-center mr-3">
+                        <Ionicons name="document-text-outline" size={18} color="#06B6D4" />
+                      </View>
+                      <Text className="text-white font-semibold text-lg">About This Challenge</Text>
+                    </View>
+                    <Text className="text-gray-300 text-base leading-6">
+                      {selectedChallenge.content_en ||
+                        selectedChallenge.description ||
+                        "Complete this challenge to improve your fitness and compete with other families!"}
+                    </Text>
+                  </View>
 
                   {/* Stats Grid */}
-                  <View className="flex-row mb-6" style={{ gap: 12 }}>
-                    <View className="flex-1 bg-gray-800 border border-gray-700 rounded-xl p-4">
-                      <Ionicons name="time-outline" size={24} color="#06B6D4" style={{ marginBottom: 8 }} />
-                      <Text className="text-white text-lg font-bold">{selectedChallenge.duration_days}</Text>
-                      <Text className="text-gray-400 text-xs">days</Text>
-                    </View>
-                    <View className="flex-1 bg-gray-800 border border-gray-700 rounded-xl p-4">
-                      <Ionicons name="footsteps-outline" size={24} color="#06B6D4" style={{ marginBottom: 8 }} />
-                      <Text className="text-white text-lg font-bold">
-                        {selectedChallenge.steps_required?.toLocaleString()}
-                      </Text>
-                      <Text className="text-gray-400 text-xs">steps</Text>
-                    </View>
-                    <View className="flex-1 bg-gray-800 border border-gray-700 rounded-xl p-4">
-                      <Ionicons name="people-outline" size={24} color="#06B6D4" style={{ marginBottom: 8 }} />
-                      <Text className="text-white text-lg font-bold">
-                        {selectedChallenge.active_families_count || 0}
-                      </Text>
-                      <Text className="text-gray-400 text-xs">families</Text>
+                  <View className="mb-6">
+                    <Text className="text-white font-semibold text-lg mb-4">Challenge Requirements</Text>
+                    <View className="flex-row" style={{ gap: 12 }}>
+                      <View
+                        className="flex-1 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 backdrop-blur border border-cyan-500/30 rounded-2xl p-5"
+                        style={{
+                          shadowColor: "#06B6D4",
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.2,
+                          shadowRadius: 8,
+                        }}
+                      >
+                        <View className="items-center">
+                          <View className="w-12 h-12 bg-cyan-500/30 rounded-2xl items-center justify-center mb-3">
+                            <Ionicons name="time-outline" size={24} color="#06B6D4" />
+                          </View>
+                          <Text className="text-white text-2xl font-bold mb-1">{selectedChallenge.duration_days}</Text>
+                          <Text className="text-gray-300 text-sm font-medium">Days</Text>
+                        </View>
+                      </View>
+
+                      <View
+                        className="flex-1 bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur border border-blue-500/30 rounded-2xl p-5"
+                        style={{
+                          shadowColor: "#3B82F6",
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.2,
+                          shadowRadius: 8,
+                        }}
+                      >
+                        <View className="items-center">
+                          <View className="w-12 h-12 bg-blue-500/30 rounded-2xl items-center justify-center mb-3">
+                            <Ionicons name="footsteps-outline" size={24} color="#3B82F6" />
+                          </View>
+                          <Text className="text-white text-2xl font-bold mb-1">
+                            {selectedChallenge.steps_required?.toLocaleString()}
+                          </Text>
+                          <Text className="text-gray-300 text-sm font-medium">Steps</Text>
+                        </View>
+                      </View>
                     </View>
                   </View>
 
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSelectedChallenge(null);
-                      handleJoinChallenge(selectedChallenge);
+                  {/* Participants */}
+                  <View
+                    className="bg-gray-800/50 backdrop-blur rounded-2xl p-5 mb-6 border border-gray-700/30"
+                    style={{
+                      shadowColor: "#8B5CF6",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 8,
                     }}
                   >
-                    <LinearGradient
-                      colors={["#06B6D4", "#3B82F6"]}
-                      className="py-4 rounded-xl mb-6"
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center">
+                        <View className="w-10 h-10 bg-purple-500/20 rounded-xl items-center justify-center mr-3">
+                          <Ionicons name="people-outline" size={20} color="#8B5CF6" />
+                        </View>
+                        <View>
+                          <Text className="text-white font-semibold text-lg">
+                            {selectedChallenge.active_families_count || 0}
+                          </Text>
+                          <Text className="text-gray-400 text-sm">Families Participating</Text>
+                        </View>
+                      </View>
+                      <View className="flex-row items-center">
+                        <Ionicons name="trending-up" size={20} color="#10B981" />
+                        <Text className="text-emerald-400 text-sm font-medium ml-1">Active</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Action Button */}
+                  {!selectedChallenge.currently_in_challenge ? (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSelectedChallenge(null);
+                        handleJoinChallenge(selectedChallenge);
+                      }}
+                      className="mb-4"
+                    >
+                      <LinearGradient
+                        colors={["#06B6D4", "#3B82F6", "#8B5CF6"]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        className="py-5 rounded-2xl"
+                        style={{
+                          shadowColor: "#06B6D4",
+                          shadowOffset: { width: 0, height: 8 },
+                          shadowOpacity: 0.4,
+                          shadowRadius: 12,
+                          elevation: 8,
+                        }}
+                      >
+                        <View className="flex-row items-center justify-center">
+                          <Ionicons name="rocket-outline" size={24} color="white" style={{ marginRight: 8 }} />
+                          <Text className="text-white text-center font-bold text-lg">Join Challenge</Text>
+                        </View>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  ) : (
+                    <View
+                      className="mb-4 bg-emerald-500/20 border border-emerald-500/30 py-5 rounded-2xl"
                       style={{
-                        shadowColor: "#06B6D4",
+                        shadowColor: "#10B981",
                         shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 4.65,
+                        shadowOpacity: 0.2,
+                        shadowRadius: 8,
                       }}
                     >
-                      <Text className="text-white text-center font-bold text-lg">Join Challenge</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
+                      <View className="flex-row items-center justify-center">
+                        <Ionicons name="checkmark-circle" size={24} color="#10B981" style={{ marginRight: 8 }} />
+                        <Text className="text-emerald-400 text-center font-bold text-lg">Already Joined</Text>
+                      </View>
+                    </View>
+                  )}
                 </ScrollView>
               </>
             )}

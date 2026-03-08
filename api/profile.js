@@ -38,6 +38,18 @@ export const deleteFamilyMemberApi = async () => {
   return response.data;
 };
 
+// PROFILE
+export const updateFamilyInfoApi = async (familyData) => {
+  const response = await apiClient.post("/update-family-info", familyData);
+  return response.data;
+};
+
+// PROFILE
+export const updateMemberProfileApi = async (memberData) => {
+  const response = await apiClient.post("/update-family-member", memberData);
+  return response.data;
+};
+
 // get Profile Hook
 export const useGetProfile = () => {
   const query = useQuery({
@@ -84,6 +96,34 @@ export const useUpdateProfile = () => {
 export const useDeleteProfile = () => {
   const mutation = useMutation({
     mutationFn: deleteFamilyMemberApi,
+  });
+  return mutation;
+};
+
+// Update Family Info Hook
+export const useUpdateFamilyInfo = () => {
+  const mutation = useMutation({
+    mutationFn: updateFamilyInfoApi,
+    onSuccess: (data) => {
+      console.log("Family info updated successfully:", data);
+    },
+    onError: (error) => {
+      console.error("Error updating family info:", error);
+    },
+  });
+  return mutation;
+};
+
+// Update Member Profile Hook
+export const useUpdateMemberProfile = () => {
+  const mutation = useMutation({
+    mutationFn: updateMemberProfileApi,
+    onSuccess: (data) => {
+      console.log("Member profile updated successfully:", data);
+    },
+    onError: (error) => {
+      console.error("Error updating member profile:", error);
+    },
   });
   return mutation;
 };
