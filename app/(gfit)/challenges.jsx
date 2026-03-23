@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StatusBar, SafeAreaView, ScrollView, Alert, Modal, Image } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StatusBar,
+  SafeAreaView,
+  ScrollView,
+  Modal,
+  Image,
+  RefreshControl,
+} from "react-native";
+import { showToast } from "../../constants";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useGlobalContext } from "../../context/GlobalContext";
@@ -22,6 +33,7 @@ export default function ChallengesPage() {
   const [currentHistoryPage, setCurrentHistoryPage] = useState(1);
   const [hasMoreHistory, setHasMoreHistory] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const getAvailableChallengesMutation = useGetAvailableChallenges();
   const getChallengeHistoryMutation = useGetChallengeHistory();
@@ -46,49 +58,49 @@ export default function ChallengesPage() {
 
   const loadAvailableChallenges = () => {
     getAvailableChallengesMutation.mutate(undefined, {
-      onSuccess: (data) => {
-        setAvailableChallenges(data?.data || []);
-      },
+      onSuccess: (data) => setAvailableChallenges(data?.data || []),
       onError: (error) => {
         console.error("Error loading available challenges:", error);
-        Alert.alert("Error", "Failed to load challenges");
+        showToast("error", "Error", "Failed to load challenges");
       },
     });
   };
 
   const loadChallengeHistory = (page = 1, isInitial = false) => {
     if (isLoadingHistory || (!hasMoreHistory && !isInitial)) return;
-
     setIsLoadingHistory(true);
     getChallengeHistoryMutation.mutate(
       { page },
       {
         onSuccess: (data) => {
           const historyData = data?.data || [];
-
           if (isInitial) {
             setChallengeHistory(historyData);
             setCurrentHistoryPage(1);
           } else {
             setChallengeHistory((prev) => [...prev, ...historyData]);
           }
-
           setHasMoreHistory(historyData.length > 0);
           setCurrentHistoryPage(page);
           setIsLoadingHistory(false);
         },
-        onError: (error) => {
-          console.error("Error loading challenge history:", error);
-          setIsLoadingHistory(false);
-        },
+        onError: () => setIsLoadingHistory(false),
       }
     );
   };
 
   const loadMoreHistory = () => {
-    if (!isLoadingHistory && hasMoreHistory) {
-      loadChallengeHistory(currentHistoryPage + 1);
+    if (!isLoadingHistory && hasMoreHistory) loadChallengeHistory(currentHistoryPage + 1);
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    if (selectedTab === "Completed") {
+      await loadChallengeHistory(1, true);
+    } else {
+      await loadAvailableChallenges();
     }
+    setRefreshing(false);
   };
 
   const getFilteredChallenges = () => {
@@ -96,7 +108,7 @@ export default function ChallengesPage() {
       case "Available":
         return availableChallenges;
       case "Active":
-        return availableChallenges.filter((challenge) => challenge.currently_in_challenge);
+        return availableChallenges.filter((c) => c.currently_in_challenge);
       case "Completed":
         return challengeHistory;
       default:
@@ -105,333 +117,516 @@ export default function ChallengesPage() {
   };
 
   const handleJoinChallenge = (challenge) => {
-    const alertTitle = "Join Challenge";
-    const alertMessage = `Are you sure you want to join "${
-      challenge.title_en || challenge.title
-    }"? You'll need to complete ${challenge.steps_required?.toLocaleString()} steps within ${
-      challenge.duration_days
-    } days.`;
-
-    Alert.alert(alertTitle, alertMessage, [
-      { text: "Cancel", style: "cancel" },
+    joinChallengeMutation.mutate(
+      { challenge_id: challenge.id },
       {
-        text: "Join",
-        onPress: () => {
-          joinChallengeMutation.mutate(
-            { challenge_id: challenge.id },
-            {
-              onSuccess: (data) => {
-                Alert.alert("Success! 🎉", "You've successfully joined the challenge. Good luck!");
-                loadAvailableChallenges();
-              },
-              onError: (error) => {
-                console.error("Error joining challenge:", error);
-                Alert.alert("Error", "Failed to join challenge. Please try again.");
-              },
-            }
-          );
+        onSuccess: () => {
+          showToast("success", "Challenge Joined! 🎉", "Good luck completing the challenge!");
+          loadAvailableChallenges();
         },
-      },
-    ]);
+        onError: () => showToast("error", "Error", "Failed to join challenge. Please try again."),
+      }
+    );
   };
 
   const handleLeaveChallenge = (challenge) => {
-    Alert.alert(
-      "Leave Challenge",
-      `Are you sure you want to leave "${challenge.title_en || challenge.title}"? Your progress will be lost.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Leave",
-          style: "destructive",
-          onPress: () => {
-            leaveChallengeMutation.mutate(
-              { challenge_id: challenge.id },
-              {
-                onSuccess: (data) => {
-                  Alert.alert("Success", "You've left the challenge.");
-                  loadAvailableChallenges();
-                },
-                onError: (error) => {
-                  console.error("Error leaving challenge:", error);
-                  Alert.alert("Error", "Failed to leave challenge. Please try again.");
-                },
-              }
-            );
-          },
+    leaveChallengeMutation.mutate(
+      { challenge_id: challenge.id },
+      {
+        onSuccess: () => {
+          showToast("success", "Left Challenge", "You've left the challenge.");
+          loadAvailableChallenges();
         },
-      ]
+        onError: () => showToast("error", "Error", "Failed to leave challenge. Please try again."),
+      }
     );
   };
 
   const tabs = ["Available", "Active", "Completed"];
 
-  const renderChallenges = () => {
-    const challenges = getFilteredChallenges();
-    const isLoading =
-      selectedTab === "Available" || selectedTab === "Active"
-        ? getAvailableChallengesMutation.isPending
-        : isLoadingHistory;
+  // ─── Tab meta ────────────────────────────────────────────────────────────────
+  const TAB_META = {
+    Available: { icon: "flame-outline", color: "#06B6D4", subtitle: "Join a challenge and compete with your family" },
+    Active: { icon: "pulse-outline", color: "#10B981", subtitle: "Your currently active challenges" },
+    Completed: { icon: "trophy-outline", color: "#F59E0B", subtitle: "Your completed challenge history" },
+  };
+
+  // ─── Stat pill ───────────────────────────────────────────────────────────────
+  const StatPill = ({ icon, value, label, color }) => (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: "rgba(255,255,255,0.04)",
+        borderRadius: 14,
+        paddingVertical: 10,
+        paddingHorizontal: 6,
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.07)",
+      }}
+    >
+      <Ionicons name={icon} size={15} color={color} style={{ marginBottom: 4 }} />
+      <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>{value}</Text>
+      <Text style={{ color: "#6B7280", fontSize: 10, marginTop: 1 }}>{label}</Text>
+    </View>
+  );
+
+  // ─── Challenge card ──────────────────────────────────────────────────────────
+  const ChallengeCard = ({ challenge }) => {
+    const isActive = challenge.currently_in_challenge;
+    const isCompleted = selectedTab === "Completed";
 
     return (
-      <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
-        <Text className="text-gray-400 text-sm mb-4">
-          {selectedTab === "Available" && "Join a challenge to compete with your family and earn rewards!"}
-          {selectedTab === "Active" && "Your currently active challenges"}
-          {selectedTab === "Completed" && "Your completed challenge history"}
-        </Text>
+      <TouchableOpacity
+        onPress={() => setSelectedChallenge(challenge)}
+        activeOpacity={0.88}
+        style={{
+          marginBottom: 16,
+          borderRadius: 24,
+          overflow: "hidden",
+          shadowColor: isActive ? "#10B981" : "#000",
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: isActive ? 0.25 : 0.35,
+          shadowRadius: 12,
+          elevation: 8,
+        }}
+      >
+        <View
+          style={{
+            backgroundColor: "#2D2548",
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor: isActive ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.06)",
+          }}
+        >
+          {/* ── Hero banner ── */}
+          {challenge.image ? (
+            <View style={{ height: 150, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden" }}>
+              <Image source={{ uri: challenge.image }} style={{ width: "100%", height: "130%" }} resizeMode="contain" />
+              <LinearGradient
+                colors={["transparent", "rgba(10,14,23,0.92)"]}
+                style={{ position: "absolute", inset: 0, bottom: 0, height: "100%" }}
+              />
+              {/* badges */}
+              <View style={{ position: "absolute", top: 12, right: 12, flexDirection: "row", gap: 6 }}>
+                {isActive && (
+                  <LinearGradient
+                    colors={["#059669", "#10B981"]}
+                    style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}
+                  >
+                    <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800", letterSpacing: 0.4 }}>● ACTIVE</Text>
+                  </LinearGradient>
+                )}
+                {isCompleted && (
+                  <LinearGradient
+                    colors={["#D97706", "#F59E0B"]}
+                    style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}
+                  >
+                    <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800", letterSpacing: 0.4 }}>✓ DONE</Text>
+                  </LinearGradient>
+                )}
+              </View>
+              <View style={{ position: "absolute", bottom: 12, left: 16, right: 16 }}>
+                <Text
+                  style={{
+                    color: "#fff",
+                    fontSize: 18,
+                    fontWeight: "800",
+                    textShadowColor: "rgba(0,0,0,0.6)",
+                    textShadowOffset: { width: 0, height: 1 },
+                    textShadowRadius: 4,
+                  }}
+                  numberOfLines={1}
+                >
+                  {challenge.title_en || challenge.title}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <LinearGradient
+              colors={isActive ? ["#065F46", "#047857", "#0D9488"] : ["#0C1B33", "#0F2746", "#1A3A5C"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{
+                height: 120,
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+                justifyContent: "flex-end",
+                padding: 16,
+              }}
+            >
+              <View style={{ position: "absolute", top: 12, right: 12, flexDirection: "row", gap: 6 }}>
+                {isActive && (
+                  <LinearGradient
+                    colors={["#059669", "#10B981"]}
+                    style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}
+                  >
+                    <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800", letterSpacing: 0.4 }}>● ACTIVE</Text>
+                  </LinearGradient>
+                )}
+                {isCompleted && (
+                  <LinearGradient
+                    colors={["#D97706", "#F59E0B"]}
+                    style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}
+                  >
+                    <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800", letterSpacing: 0.4 }}>✓ DONE</Text>
+                  </LinearGradient>
+                )}
+              </View>
+              <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800" }} numberOfLines={1}>
+                {challenge.title_en || challenge.title}
+              </Text>
+            </LinearGradient>
+          )}
+
+          {/* ── Body ── */}
+          <View style={{ padding: 16 }}>
+            <Text style={{ color: "#9CA3AF", fontSize: 13, lineHeight: 19, marginBottom: 14 }} numberOfLines={2}>
+              {challenge.content_en || challenge.description || "Complete the challenge to earn rewards!"}
+            </Text>
+
+            {/* Stats row */}
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
+              <StatPill icon="time-outline" value={challenge.duration_days} label="days" color="#06B6D4" />
+              <StatPill
+                icon="footsteps-outline"
+                value={`${(challenge.steps_required / 1000).toFixed(0)}k`}
+                label="steps"
+                color="#8B5CF6"
+              />
+              <StatPill
+                icon="people-outline"
+                value={challenge.active_families_count || challenge.joined_families_count || 0}
+                label="families"
+                color="#F59E0B"
+              />
+              {challenge.completion_xp ? (
+                <StatPill icon="star-outline" value={`+${challenge.completion_xp}`} label="XP reward" color="#10B981" />
+              ) : null}
+            </View>
+
+            {/* Action */}
+            {selectedTab === "Active" ? (
+              <TouchableOpacity
+                onPress={() => handleLeaveChallenge(challenge)}
+                style={{
+                  backgroundColor: "rgba(239,68,68,0.12)",
+                  borderWidth: 1,
+                  borderColor: "rgba(239,68,68,0.35)",
+                  borderRadius: 14,
+                  paddingVertical: 12,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#F87171", fontWeight: "700", fontSize: 14 }}>Leave Challenge</Text>
+              </TouchableOpacity>
+            ) : selectedTab === "Available" && !challenge.currently_in_challenge ? (
+              <TouchableOpacity onPress={() => handleJoinChallenge(challenge)}>
+                <LinearGradient
+                  colors={["#06B6D4", "#3B82F6"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    borderRadius: 14,
+                    paddingVertical: 12,
+                    alignItems: "center",
+                    shadowColor: "#06B6D4",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.35,
+                    shadowRadius: 8,
+                  }}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Join Challenge</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : selectedTab === "Available" && challenge.currently_in_challenge ? (
+              <View
+                style={{
+                  backgroundColor: "rgba(16,185,129,0.12)",
+                  borderWidth: 1,
+                  borderColor: "rgba(16,185,129,0.3)",
+                  borderRadius: 14,
+                  paddingVertical: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                <Text style={{ color: "#34D399", fontWeight: "700", fontSize: 14 }}>Already Joined</Text>
+              </View>
+            ) : isCompleted ? (
+              <View
+                style={{
+                  backgroundColor: "rgba(245,158,11,0.1)",
+                  borderWidth: 1,
+                  borderColor: "rgba(245,158,11,0.25)",
+                  borderRadius: 14,
+                  paddingVertical: 12,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                }}
+              >
+                <Ionicons name="trophy" size={15} color="#F59E0B" />
+                <Text style={{ color: "#FCD34D", fontWeight: "700", fontSize: 14 }}>Completed</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  // ─── List renderer ───────────────────────────────────────────────────────────
+  const renderChallenges = () => {
+    const challenges = getFilteredChallenges();
+    const isLoading = selectedTab !== "Completed" ? getAvailableChallengesMutation.isPending : isLoadingHistory;
+    const meta = TAB_META[selectedTab];
+
+    return (
+      <ScrollView
+        className="flex-1 px-5"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#06B6D4" colors={["#06B6D4"]} />
+        }
+      >
+        {/* Sub-header */}
+        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16, gap: 6 }}>
+          <Ionicons name={meta.icon} size={14} color={meta.color} />
+          <Text style={{ color: "#6B7280", fontSize: 13 }}>{meta.subtitle}</Text>
+        </View>
 
         {isLoading && challenges.length === 0 ? (
-          <View className="flex-1 justify-center items-center py-20">
-            <Text className="text-gray-400">Loading challenges...</Text>
+          <View style={{ alignItems: "center", paddingTop: 80 }}>
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: "rgba(255,255,255,0.04)",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 16,
+              }}
+            >
+              <Ionicons name="hourglass-outline" size={28} color="#4B5563" />
+            </View>
+            <Text style={{ color: "#6B7280", fontSize: 14 }}>Loading challenges…</Text>
           </View>
         ) : challenges.length === 0 ? (
-          <View className="flex-1 justify-center items-center py-20">
-            <Ionicons name="trophy-outline" size={64} color="#4B5563" />
-            <Text className="text-gray-400 mt-4 text-center">
-              {selectedTab === "Available" && "No challenges available"}
-              {selectedTab === "Active" && "No active challenges"}
-              {selectedTab === "Completed" && "No completed challenges"}
+          <View style={{ alignItems: "center", paddingTop: 64 }}>
+            <LinearGradient
+              colors={["rgba(255,255,255,0.04)", "rgba(255,255,255,0.02)"]}
+              style={{
+                width: 80,
+                height: 80,
+                borderRadius: 40,
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 16,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.07)",
+              }}
+            >
+              <Ionicons name={meta.icon} size={36} color="#374151" />
+            </LinearGradient>
+            <Text style={{ color: "#9CA3AF", fontSize: 15, fontWeight: "600", marginBottom: 6 }}>
+              {selectedTab === "Available"
+                ? "No challenges yet"
+                : selectedTab === "Active"
+                ? "No active challenges"
+                : "No history yet"}
+            </Text>
+            <Text style={{ color: "#4B5563", fontSize: 13, textAlign: "center", paddingHorizontal: 32 }}>
+              {selectedTab === "Active"
+                ? "Join a challenge from the Available tab to get started."
+                : "Check back soon for new challenges!"}
             </Text>
           </View>
         ) : (
-          <View className="pb-32">
-            {challenges.map((challenge, index) => (
-              <TouchableOpacity
-                key={challenge.id}
-                onPress={() => setSelectedChallenge(challenge)}
-                className="mb-4 rounded-3xl overflow-hidden"
-                style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4.65,
-                }}
-              >
-                <View className="bg-gray-800 border border-gray-700">
-                  {/* Challenge Image/Header */}
-                  {challenge.image ? (
-                    <View className="h-32 relative">
-                      <Image source={{ uri: challenge.image }} className="w-full h-full" resizeMode="cover" />
-                      <LinearGradient colors={["transparent", "rgba(0,0,0,0.7)"]} className="absolute inset-0" />
-                      <View className="absolute bottom-3 left-4">
-                        <Text className="text-white text-xl font-bold">{challenge.title_en || challenge.title}</Text>
-                      </View>
-                      {selectedTab === "Active" && (
-                        <View className="absolute top-3 right-3">
-                          <View className="bg-emerald-500 px-3 py-1.5 rounded-full">
-                            <Text className="text-white text-xs font-bold">Active</Text>
-                          </View>
-                        </View>
-                      )}
-                    </View>
-                  ) : (
-                    <LinearGradient
-                      colors={["#06B6D4", "#3B82F6", "#9333EA"]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={{ height: 120 }}
-                    >
-                      <View className="absolute inset-0 bg-black/20" />
-                      <View className="absolute bottom-3 left-4">
-                        <Text className="text-white text-xl font-bold">{challenge.title_en || challenge.title}</Text>
-                      </View>
-                      {selectedTab === "Active" && (
-                        <View className="absolute top-3 right-3">
-                          <View className="bg-emerald-500 px-3 py-1.5 rounded-full">
-                            <Text className="text-white text-xs font-bold">Active</Text>
-                          </View>
-                        </View>
-                      )}
-                    </LinearGradient>
-                  )}
-
-                  <View className="p-5">
-                    <Text className="text-gray-300 text-sm mb-4">
-                      {challenge.content_en || challenge.description || "Complete the challenge to earn rewards!"}
-                    </Text>
-
-                    {/* Stats */}
-                    <View className="flex-row mb-4" style={{ gap: 16 }}>
-                      <View className="flex-1 bg-gray-700/50 rounded-xl p-3">
-                        <View className="flex-row items-center justify-center mb-1">
-                          <Ionicons name="time-outline" size={16} color="#06B6D4" />
-                        </View>
-                        <Text className="text-white text-center font-semibold">{challenge.duration_days}</Text>
-                        <Text className="text-gray-400 text-xs text-center">days</Text>
-                      </View>
-                      <View className="flex-1 bg-gray-700/50 rounded-xl p-3">
-                        <View className="flex-row items-center justify-center mb-1">
-                          <Ionicons name="footsteps-outline" size={16} color="#06B6D4" />
-                        </View>
-                        <Text className="text-white text-center font-semibold">
-                          {(challenge.steps_required / 1000).toFixed(0)}k
-                        </Text>
-                        <Text className="text-gray-400 text-xs text-center">steps</Text>
-                      </View>
-                      <View className="flex-1 bg-gray-700/50 rounded-xl p-3">
-                        <View className="flex-row items-center justify-center mb-1">
-                          <Ionicons name="people-outline" size={16} color="#06B6D4" />
-                        </View>
-                        <Text className="text-white text-center font-semibold">
-                          {challenge.active_families_count || challenge.joined_families_count || 0}
-                        </Text>
-                        <Text className="text-gray-400 text-xs text-center">families</Text>
-                      </View>
-                    </View>
-
-                    {/* Action Button */}
-                    {selectedTab === "Active" && (
-                      <TouchableOpacity onPress={() => handleLeaveChallenge(challenge)}>
-                        <LinearGradient
-                          colors={["#EF4444", "#DC2626"]}
-                          className="py-3 rounded-xl"
-                          style={{
-                            shadowColor: "#EF4444",
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 3.84,
-                          }}
-                        >
-                          <Text className="text-white text-center font-semibold">Leave Challenge</Text>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    )}
-                    {selectedTab === "Available" && !challenge.currently_in_challenge && (
-                      <TouchableOpacity onPress={() => handleJoinChallenge(challenge)}>
-                        <LinearGradient
-                          colors={["#06B6D4", "#3B82F6"]}
-                          className="py-3 rounded-xl"
-                          style={{
-                            shadowColor: "#06B6D4",
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 3.84,
-                          }}
-                        >
-                          <Text className="text-white text-center font-semibold">Join Challenge</Text>
-                        </LinearGradient>
-                      </TouchableOpacity>
-                    )}
-                    {selectedTab === "Available" && challenge.currently_in_challenge && (
-                      <View className="bg-emerald-500 py-3 rounded-xl">
-                        <View className="flex-row items-center justify-center">
-                          <Ionicons name="checkmark-circle" size={20} color="white" style={{ marginRight: 6 }} />
-                          <Text className="text-white text-center font-semibold">Already Joined</Text>
-                        </View>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </TouchableOpacity>
+          <>
+            {challenges.map((challenge) => (
+              <ChallengeCard key={challenge.id} challenge={challenge} />
             ))}
 
-            {/* Load More Button */}
             {selectedTab === "Completed" && hasMoreHistory && !isLoadingHistory && (
-              <TouchableOpacity onPress={loadMoreHistory} className="mb-4">
-                <LinearGradient colors={["#374151", "#1F2937"]} className="py-3 rounded-xl">
-                  <Text className="text-cyan-400 text-center font-medium">Load More</Text>
-                </LinearGradient>
+              <TouchableOpacity onPress={loadMoreHistory} style={{ marginTop: 4, marginBottom: 8 }}>
+                <View
+                  style={{
+                    borderWidth: 1,
+                    borderColor: "rgba(6,182,212,0.25)",
+                    borderRadius: 14,
+                    paddingVertical: 12,
+                    alignItems: "center",
+                    backgroundColor: "rgba(6,182,212,0.05)",
+                  }}
+                >
+                  <Text style={{ color: "#06B6D4", fontWeight: "600", fontSize: 14 }}>Load more</Text>
+                </View>
               </TouchableOpacity>
             )}
-
             {selectedTab === "Completed" && isLoadingHistory && (
-              <View className="py-4">
-                <Text className="text-gray-400 text-center">Loading more...</Text>
-              </View>
+              <Text style={{ color: "#6B7280", textAlign: "center", paddingVertical: 16, fontSize: 13 }}>
+                Loading more…
+              </Text>
             )}
-          </View>
+          </>
         )}
       </ScrollView>
     );
   };
 
+  // ─── Root ────────────────────────────────────────────────────────────────────
   return (
     <View className="flex-1 bg-background">
       <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
-      <SafeAreaView className="flex-1">
-        {/* Header */}
-        <View className="px-6 py-4">
-          <View className="flex-row justify-between items-center mb-4">
-            <View className="flex-row items-center flex-1">
-              <TouchableOpacity onPress={() => router.back()} className="mr-3">
-                <LinearGradient colors={["#374151", "#1F2937"]} className="p-2 rounded-xl">
-                  <Ionicons name="chevron-back" size={24} color="white" />
-                </LinearGradient>
-              </TouchableOpacity>
-              <Text style={{ fontFamily: "MontserratAlternates_700Bold" }} className="text-white text-2xl">
+      <SafeAreaView style={{ flex: 1 }}>
+        {/* ── Header ── */}
+        <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
+            <TouchableOpacity onPress={() => router.back()} activeOpacity={0.75} style={{ marginRight: 12 }}>
+              <View
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 12,
+                  backgroundColor: "rgba(255,255,255,0.07)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.08)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ionicons name="chevron-back" size={20} color="#fff" />
+              </View>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: "MontserratAlternates_700Bold", color: "#fff", fontSize: 22 }}>
                 Family Challenges
               </Text>
             </View>
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                backgroundColor: "rgba(245,158,11,0.12)",
+                borderWidth: 1,
+                borderColor: "rgba(245,158,11,0.25)",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Ionicons name="trophy" size={18} color="#F59E0B" />
+            </View>
           </View>
 
-          {/* Info Banner */}
-          <LinearGradient
-            colors={["rgba(6, 182, 212, 0.2)", "rgba(59, 130, 246, 0.2)"]}
-            className="rounded-2xl p-4 border border-cyan-500/30"
+          {/* Rule banner */}
+          <View
             style={{
-              shadowColor: "#06B6D4",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 3.84,
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "rgba(6,182,212,0.07)",
+              borderRadius: 16,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              borderWidth: 1,
+              borderColor: "rgba(6,182,212,0.18)",
+              gap: 10,
             }}
           >
-            <View className="flex-row items-center mb-2">
-              <View className="w-8 h-8 bg-cyan-500/20 rounded-full items-center justify-center mr-2">
-                <Ionicons name="information-circle" size={18} color="#06B6D4" />
-              </View>
-              <Text className="text-cyan-400 font-semibold">Challenge Rules</Text>
-            </View>
-            <Text className="text-gray-300 text-sm">
-              Families can only join one challenge at a time. Work together to complete goals and earn rewards!
+            <Ionicons name="information-circle-outline" size={18} color="#22D3EE" />
+            <Text style={{ color: "#94A3B8", fontSize: 12.5, flex: 1, lineHeight: 18 }}>
+              Families can only join <Text style={{ color: "#22D3EE", fontWeight: "600" }}>one challenge</Text> at a
+              time. Work together to earn rewards!
             </Text>
-          </LinearGradient>
+          </View>
         </View>
 
-        {/* Tab Navigation */}
-        <View className="px-6 mb-4">
+        {/* ── Tabs ── */}
+        <View style={{ paddingHorizontal: 20, marginBottom: 6, marginTop: 14 }}>
           <View
-            className="bg-gray-800 border border-gray-700 rounded-2xl p-1.5"
             style={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
-              shadowRadius: 3.84,
+              flexDirection: "row",
+              backgroundColor: "rgba(255,255,255,0.04)",
+              borderRadius: 18,
+              padding: 4,
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.06)",
             }}
           >
-            <View className="flex-row">
-              {tabs.map((tab) => (
-                <TouchableOpacity key={tab} onPress={() => setSelectedTab(tab)} className="flex-1">
-                  {selectedTab === tab ? (
-                    <LinearGradient colors={["#06B6D4", "#3B82F6"]} className="py-3 rounded-xl">
-                      <Text className="text-center font-semibold text-white">{tab}</Text>
+            {tabs.map((t) => {
+              const active = selectedTab === t;
+              const meta = TAB_META[t];
+              return (
+                <TouchableOpacity key={t} onPress={() => setSelectedTab(t)} style={{ flex: 1 }} activeOpacity={0.8}>
+                  {active ? (
+                    <LinearGradient
+                      colors={
+                        t === "Active"
+                          ? ["#065F46", "#059669"]
+                          : t === "Completed"
+                          ? ["#92400E", "#B45309"]
+                          : ["#0E7490", "#2563EB"]
+                      }
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={{
+                        paddingVertical: 9,
+                        borderRadius: 14,
+                        alignItems: "center",
+                        flexDirection: "row",
+                        justifyContent: "center",
+                        gap: 5,
+                      }}
+                    >
+                      <Ionicons name={meta.icon} size={13} color="#fff" />
+                      <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>{t}</Text>
                     </LinearGradient>
                   ) : (
-                    <View className="py-3">
-                      <Text className="text-center font-medium text-gray-400">{tab}</Text>
+                    <View
+                      style={{
+                        paddingVertical: 9,
+                        alignItems: "center",
+                        flexDirection: "row",
+                        justifyContent: "center",
+                        gap: 5,
+                      }}
+                    >
+                      <Ionicons name={meta.icon} size={13} color="#4B5563" />
+                      <Text style={{ color: "#6B7280", fontWeight: "600", fontSize: 13 }}>{t}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
-              ))}
-            </View>
+              );
+            })}
           </View>
         </View>
 
-        {/* Content */}
+        {/* ── Content ── */}
         {renderChallenges()}
       </SafeAreaView>
 
-      {/* Challenge Details Modal */}
+      {/* ── Challenge Detail Modal ── */}
       <Modal
         visible={!!selectedChallenge}
-        transparent={true}
+        transparent
         animationType="fade"
         onRequestClose={() => setSelectedChallenge(null)}
       >
-        <View className="flex-1 bg-black/50 justify-center px-4">
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", paddingHorizontal: 16 }}>
           <View
-            className="bg-gray-900 rounded-3xl overflow-hidden border border-gray-700/50 max-h-4/5"
             style={{
+              backgroundColor: "#1E1B2E",
+              borderRadius: 28,
+              maxHeight: "88%",
+              borderWidth: 1,
+              borderColor: "rgba(255,255,255,0.08)",
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 20 },
               shadowOpacity: 0.5,
@@ -441,176 +636,202 @@ export default function ChallengesPage() {
           >
             {selectedChallenge && (
               <>
-                {/* Modal Header with Gradient */}
-                <LinearGradient
-                  colors={["#06B6D4", "#3B82F6", "#8B5CF6"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  className="px-6 py-6"
+                {/* Modal header */}
+                <View
+                  style={{
+                    paddingHorizontal: 20,
+                    paddingTop: 8,
+                    paddingBottom: 16,
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                  }}
                 >
-                  <View className="flex-row justify-between items-center">
-                    <View className="flex-1">
-                      <Text style={{ fontFamily: "MontserratAlternates_700Bold" }} className="text-white text-2xl mb-1">
-                        Challenge Details
-                      </Text>
-                      <Text className="text-white/80 text-sm">
-                        {selectedChallenge.title_en || selectedChallenge.title}
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      onPress={() => setSelectedChallenge(null)}
-                      className="w-12 h-12 bg-white/20 backdrop-blur rounded-2xl items-center justify-center"
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text
                       style={{
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 4,
+                        fontFamily: "MontserratAlternates_700Bold",
+                        color: "#fff",
+                        fontSize: 21,
+                        marginBottom: 3,
                       }}
                     >
-                      <Ionicons name="close" size={24} color="white" />
-                    </TouchableOpacity>
+                      {selectedChallenge.title_en || selectedChallenge.title}
+                    </Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                      <Ionicons name="flame-outline" size={13} color="#06B6D4" />
+                      <Text style={{ color: "#06B6D4", fontSize: 12, fontWeight: "600" }}>Challenge Details</Text>
+                    </View>
                   </View>
-                </LinearGradient>
-
-                <ScrollView className="px-6 py-6" showsVerticalScrollIndicator={false}>
-                  {/* Description Card */}
-                  <View
-                    className="bg-gray-800/50 backdrop-blur rounded-2xl p-5 mb-6 border border-gray-700/30"
+                  <TouchableOpacity
+                    onPress={() => setSelectedChallenge(null)}
                     style={{
-                      shadowColor: "#06B6D4",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 8,
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      backgroundColor: "rgba(255,255,255,0.07)",
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.1)",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
-                    <View className="flex-row items-center mb-3">
-                      <View className="w-8 h-8 bg-cyan-500/20 rounded-xl items-center justify-center mr-3">
-                        <Ionicons name="document-text-outline" size={18} color="#06B6D4" />
+                    <Ionicons name="close" size={18} color="#9CA3AF" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Divider */}
+                <View
+                  style={{
+                    height: 1,
+                    backgroundColor: "rgba(255,255,255,0.06)",
+                    marginHorizontal: 20,
+                    marginBottom: 4,
+                  }}
+                />
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+                >
+                  {/* Stats row */}
+                  <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
+                    {[
+                      {
+                        icon: "time-outline",
+                        value: `${selectedChallenge.duration_days}`,
+                        label: "Days",
+                        color: "#06B6D4",
+                        bg: "rgba(6,182,212,0.1)",
+                        border: "rgba(6,182,212,0.2)",
+                      },
+                      {
+                        icon: "footsteps-outline",
+                        value: selectedChallenge.steps_required?.toLocaleString(),
+                        label: "Steps",
+                        color: "#8B5CF6",
+                        bg: "rgba(139,92,246,0.1)",
+                        border: "rgba(139,92,246,0.2)",
+                      },
+                      {
+                        icon: "people-outline",
+                        value: `${selectedChallenge.active_families_count || 0}`,
+                        label: "Families",
+                        color: "#F59E0B",
+                        bg: "rgba(245,158,11,0.1)",
+                        border: "rgba(245,158,11,0.2)",
+                      },
+                      ...(selectedChallenge.completion_xp
+                        ? [
+                            {
+                              icon: "star",
+                              value: `+${selectedChallenge.completion_xp}`,
+                              label: "XP Reward",
+                              color: "#10B981",
+                              bg: "rgba(16,185,129,0.1)",
+                              border: "rgba(16,185,129,0.2)",
+                            },
+                          ]
+                        : []),
+                    ].map(({ icon, value, label, color, bg, border }) => (
+                      <View
+                        key={label}
+                        style={{
+                          flex: 1,
+                          backgroundColor: bg,
+                          borderWidth: 1,
+                          borderColor: border,
+                          borderRadius: 18,
+                          paddingVertical: 14,
+                          alignItems: "center",
+                        }}
+                      >
+                        <Ionicons name={icon} size={22} color={color} style={{ marginBottom: 6 }} />
+                        <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>{value}</Text>
+                        <Text style={{ color: "#6B7280", fontSize: 11, marginTop: 2 }}>{label}</Text>
                       </View>
-                      <Text className="text-white font-semibold text-lg">About This Challenge</Text>
+                    ))}
+                  </View>
+
+                  {/* About */}
+                  <View
+                    style={{
+                      backgroundColor: "rgba(255,255,255,0.03)",
+                      borderRadius: 18,
+                      padding: 16,
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.07)",
+                      marginBottom: 20,
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                      <View
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 8,
+                          backgroundColor: "rgba(6,182,212,0.12)",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <Ionicons name="document-text-outline" size={15} color="#06B6D4" />
+                      </View>
+                      <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>About</Text>
                     </View>
-                    <Text className="text-gray-300 text-base leading-6">
+                    <Text style={{ color: "#9CA3AF", fontSize: 14, lineHeight: 22 }}>
                       {selectedChallenge.content_en ||
                         selectedChallenge.description ||
                         "Complete this challenge to improve your fitness and compete with other families!"}
                     </Text>
                   </View>
 
-                  {/* Stats Grid */}
-                  <View className="mb-6">
-                    <Text className="text-white font-semibold text-lg mb-4">Challenge Requirements</Text>
-                    <View className="flex-row" style={{ gap: 12 }}>
-                      <View
-                        className="flex-1 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 backdrop-blur border border-cyan-500/30 rounded-2xl p-5"
-                        style={{
-                          shadowColor: "#06B6D4",
-                          shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: 0.2,
-                          shadowRadius: 8,
-                        }}
-                      >
-                        <View className="items-center">
-                          <View className="w-12 h-12 bg-cyan-500/30 rounded-2xl items-center justify-center mb-3">
-                            <Ionicons name="time-outline" size={24} color="#06B6D4" />
-                          </View>
-                          <Text className="text-white text-2xl font-bold mb-1">{selectedChallenge.duration_days}</Text>
-                          <Text className="text-gray-300 text-sm font-medium">Days</Text>
-                        </View>
-                      </View>
-
-                      <View
-                        className="flex-1 bg-gradient-to-br from-blue-500/20 to-purple-500/20 backdrop-blur border border-blue-500/30 rounded-2xl p-5"
-                        style={{
-                          shadowColor: "#3B82F6",
-                          shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: 0.2,
-                          shadowRadius: 8,
-                        }}
-                      >
-                        <View className="items-center">
-                          <View className="w-12 h-12 bg-blue-500/30 rounded-2xl items-center justify-center mb-3">
-                            <Ionicons name="footsteps-outline" size={24} color="#3B82F6" />
-                          </View>
-                          <Text className="text-white text-2xl font-bold mb-1">
-                            {selectedChallenge.steps_required?.toLocaleString()}
-                          </Text>
-                          <Text className="text-gray-300 text-sm font-medium">Steps</Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Participants */}
-                  <View
-                    className="bg-gray-800/50 backdrop-blur rounded-2xl p-5 mb-6 border border-gray-700/30"
-                    style={{
-                      shadowColor: "#8B5CF6",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 8,
-                    }}
-                  >
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-row items-center">
-                        <View className="w-10 h-10 bg-purple-500/20 rounded-xl items-center justify-center mr-3">
-                          <Ionicons name="people-outline" size={20} color="#8B5CF6" />
-                        </View>
-                        <View>
-                          <Text className="text-white font-semibold text-lg">
-                            {selectedChallenge.active_families_count || 0}
-                          </Text>
-                          <Text className="text-gray-400 text-sm">Families Participating</Text>
-                        </View>
-                      </View>
-                      <View className="flex-row items-center">
-                        <Ionicons name="trending-up" size={20} color="#10B981" />
-                        <Text className="text-emerald-400 text-sm font-medium ml-1">Active</Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Action Button */}
+                  {/* Action */}
                   {!selectedChallenge.currently_in_challenge ? (
                     <TouchableOpacity
                       onPress={() => {
                         setSelectedChallenge(null);
                         handleJoinChallenge(selectedChallenge);
                       }}
-                      className="mb-4"
                     >
                       <LinearGradient
                         colors={["#06B6D4", "#3B82F6", "#8B5CF6"]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
-                        className="py-5 rounded-2xl"
                         style={{
-                          shadowColor: "#06B6D4",
+                          borderRadius: 18,
+                          paddingVertical: 16,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 8,
+                          shadowColor: "#3B82F6",
                           shadowOffset: { width: 0, height: 8 },
                           shadowOpacity: 0.4,
-                          shadowRadius: 12,
-                          elevation: 8,
+                          shadowRadius: 16,
+                          elevation: 10,
                         }}
                       >
-                        <View className="flex-row items-center justify-center">
-                          <Ionicons name="rocket-outline" size={24} color="white" style={{ marginRight: 8 }} />
-                          <Text className="text-white text-center font-bold text-lg">Join Challenge</Text>
-                        </View>
+                        <Ionicons name="rocket-outline" size={20} color="#fff" />
+                        <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>Join Challenge</Text>
                       </LinearGradient>
                     </TouchableOpacity>
                   ) : (
                     <View
-                      className="mb-4 bg-emerald-500/20 border border-emerald-500/30 py-5 rounded-2xl"
                       style={{
-                        shadowColor: "#10B981",
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.2,
-                        shadowRadius: 8,
+                        backgroundColor: "rgba(16,185,129,0.1)",
+                        borderWidth: 1,
+                        borderColor: "rgba(16,185,129,0.25)",
+                        borderRadius: 18,
+                        paddingVertical: 16,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
                       }}
                     >
-                      <View className="flex-row items-center justify-center">
-                        <Ionicons name="checkmark-circle" size={24} color="#10B981" style={{ marginRight: 8 }} />
-                        <Text className="text-emerald-400 text-center font-bold text-lg">Already Joined</Text>
-                      </View>
+                      <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                      <Text style={{ color: "#34D399", fontWeight: "800", fontSize: 16 }}>Already Joined</Text>
                     </View>
                   )}
                 </ScrollView>

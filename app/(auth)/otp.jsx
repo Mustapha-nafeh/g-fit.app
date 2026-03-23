@@ -45,8 +45,6 @@ const OTPVerificationScreen = () => {
     const otpCode = otp.join("");
     const tokenKey = await securestore.getItemAsync("token_key");
 
-    console.log("Verifying OTP with token:", tokenKey);
-
     if (!tokenKey) {
       showToast("error", "Error", "Token key not found. Please try registering again.");
       return;
@@ -61,7 +59,6 @@ const OTPVerificationScreen = () => {
           router.replace("(selection)/select-user");
         },
         onError: (error) => {
-          console.log("OTP verification failed:", error);
           showToast("error", "OTP Verification Failed", error.response?.data?.message || "An error occurred");
         },
       }
@@ -70,8 +67,6 @@ const OTPVerificationScreen = () => {
 
   const handleResend = async () => {
     const tokenKey = await securestore.getItemAsync("token_key");
-
-    console.log("Resend code pressed with token:", tokenKey);
 
     if (!tokenKey) {
       showToast("error", "Error", "Token key not found. Please try registering again.");
@@ -82,11 +77,9 @@ const OTPVerificationScreen = () => {
       { token_key: tokenKey },
       {
         onSuccess: (data) => {
-          console.log("OTP resent successfully");
           showToast("success", "OTP Resent", "A new OTP has been sent to your email.");
         },
         onError: (error) => {
-          console.log("Resend OTP failed:", error);
           showToast("error", "Resend OTP Failed", error.response?.data?.message || "An error occurred");
         },
       }
@@ -102,7 +95,6 @@ const OTPVerificationScreen = () => {
 
   const handlelog = async () => {
     const tokenKey = await securestore.getItemAsync("token_key");
-    console.log("Token Key:", tokenKey);
   };
 
   return (

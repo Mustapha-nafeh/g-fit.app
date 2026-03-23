@@ -20,6 +20,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { getShareableWorkoutLinks } from "../../utils/deepLinks";
 import { useGetWorkoutById } from "../../api/gtkfApi";
 import { showToast } from "../../constants";
+import BunnyVideoPlayer from "../../global-components/BunnyVideoPlayer";
 
 // ─── Pill badge ──────────────────────────────────────────────────────────────
 const Badge = ({ icon, label, color = "#10B981", bg = "#D1FAE5" }) => (
@@ -139,6 +140,7 @@ export default function WorkoutPage() {
   });
 
   const workout = data?.data ?? null;
+  const videoId = workout?.video_id ?? workout?.bunny_video_id ?? null;
 
   // ─── Handlers ────────────────────────────────────────────────────────────
   const handleShare = async () => {
@@ -186,6 +188,7 @@ export default function WorkoutPage() {
   if (isError) return <ErrorState />;
 
   const hasVideo = !!(workout?.video_url || workout?.videoUrl);
+  const hasEmbeddedVideo = !!videoId;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0F172A" }} edges={["top"]}>
@@ -237,69 +240,75 @@ export default function WorkoutPage() {
           </TouchableOpacity>
         </View>
 
-        {/* ── Hero image / video thumb ── */}
-        <TouchableOpacity onPress={openVideo} activeOpacity={0.9} style={{ marginHorizontal: 20, marginBottom: 6 }}>
-          <View
-            style={{
-              height: 300,
-              borderRadius: 24,
-              overflow: "hidden",
-              backgroundColor: "#1E293B",
-            }}
-          >
-            {workout?.image ? (
-              <Image source={{ uri: workout.image }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
-            ) : (
-              <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name="barbell-outline" size={48} color="#334155" />
-              </View>
-            )}
-
-            {/* Gradient overlay */}
-            <LinearGradient
-              colors={["transparent", "rgba(0,0,0,0.55)"]}
-              style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 120 }}
-            />
-
-            {/* Play button */}
-            <View style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}>
+        {/* ── Hero: Bunny video player OR static image thumb ── */}
+        <View style={{ marginHorizontal: 20, marginBottom: 6 }}>
+          {videoId ? (
+            <BunnyVideoPlayer videoId={videoId} style={{ height: 240, borderRadius: 24 }} />
+          ) : (
+            <TouchableOpacity onPress={openVideo} activeOpacity={0.9}>
               <View
                 style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: 32,
-                  backgroundColor: "rgba(255,255,255,0.18)",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  borderWidth: 1.5,
-                  borderColor: "rgba(255,255,255,0.35)",
+                  height: 300,
+                  borderRadius: 24,
+                  overflow: "hidden",
+                  backgroundColor: "#1E293B",
                 }}
               >
-                <Ionicons name="play" size={28} color="white" style={{ marginLeft: 3 }} />
-              </View>
-            </View>
+                {workout?.image ? (
+                  <Image source={{ uri: workout.image }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                ) : (
+                  <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                    <Ionicons name="barbell-outline" size={48} color="#334155" />
+                  </View>
+                )}
 
-            {/* Video badge */}
-            {hasVideo && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: 14,
-                  right: 14,
-                  backgroundColor: "rgba(0,0,0,0.6)",
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderRadius: 12,
-                  flexDirection: "row",
-                  alignItems: "center",
-                }}
-              >
-                <Ionicons name="videocam" size={12} color="#0EA5E9" />
-                <Text style={{ color: "white", fontSize: 11, fontWeight: "600", marginLeft: 4 }}>Video</Text>
+                {/* Gradient overlay */}
+                <LinearGradient
+                  colors={["transparent", "rgba(0,0,0,0.55)"]}
+                  style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 120 }}
+                />
+
+                {/* Play button */}
+                <View style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}>
+                  <View
+                    style={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: 32,
+                      backgroundColor: "rgba(255,255,255,0.18)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderWidth: 1.5,
+                      borderColor: "rgba(255,255,255,0.35)",
+                    }}
+                  >
+                    <Ionicons name="play" size={28} color="white" style={{ marginLeft: 3 }} />
+                  </View>
+                </View>
+
+                {/* Video badge */}
+                {hasVideo && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: 14,
+                      right: 14,
+                      backgroundColor: "rgba(0,0,0,0.6)",
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderRadius: 12,
+                      flexDirection: "row",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Ionicons name="videocam" size={12} color="#0EA5E9" />
+                    <Text style={{ color: "white", fontSize: 11, fontWeight: "600", marginLeft: 4 }}>Video</Text>
+                  </View>
+                )}
               </View>
-            )}
-          </View>
-        </TouchableOpacity>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* ── White card content ── */}
         <View
@@ -408,27 +417,29 @@ export default function WorkoutPage() {
           borderTopColor: "#F1F5F9",
         }}
       >
-        {/* Start button */}
-        <TouchableOpacity
-          onPress={openVideo}
-          style={{
-            backgroundColor: "#0EA5E9",
-            paddingVertical: 16,
-            borderRadius: 16,
-            alignItems: "center",
-            flexDirection: "row",
-            justifyContent: "center",
-            gap: 8,
-            shadowColor: "#0EA5E9",
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.35,
-            shadowRadius: 12,
-            elevation: 6,
-          }}
-        >
-          <Ionicons name="play-circle-outline" size={22} color="white" />
-          <Text style={{ color: "white", fontSize: 16, fontWeight: "700" }}>Start Workout</Text>
-        </TouchableOpacity>
+        {/* Start button — only shown when using external video link, not Bunny embed */}
+        {!hasEmbeddedVideo && (
+          <TouchableOpacity
+            onPress={openVideo}
+            style={{
+              backgroundColor: "#0EA5E9",
+              paddingVertical: 16,
+              borderRadius: 16,
+              alignItems: "center",
+              flexDirection: "row",
+              justifyContent: "center",
+              gap: 8,
+              shadowColor: "#0EA5E9",
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.35,
+              shadowRadius: 12,
+              elevation: 6,
+            }}
+          >
+            <Ionicons name="play-circle-outline" size={22} color="white" />
+            <Text style={{ color: "white", fontSize: 16, fontWeight: "700" }}>Start Workout</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Secondary row */}
         <View style={{ flexDirection: "row", justifyContent: "center", gap: 28, marginTop: 14 }}>

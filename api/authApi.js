@@ -36,12 +36,6 @@ export const forgotPasswordApi = async (emailData) => {
 export const useLogin = () => {
   const mutation = useMutation({
     mutationFn: loginApi,
-    onSuccess: async (data) => {
-      console.log("login", data);
-    },
-    onError: (error) => {
-      console.error("login error", error);
-    },
   });
   return mutation;
 };
@@ -50,12 +44,6 @@ export const useLogin = () => {
 export const useRegister = () => {
   const mutation = useMutation({
     mutationFn: registerApi,
-    onSuccess: (data) => {
-      console.log("Registration successful", data);
-    },
-    onError: (error) => {
-      console.error("Registration failed", error);
-    },
   });
   return mutation;
 };
@@ -64,13 +52,6 @@ export const useRegister = () => {
 export const useCheckOtp = () => {
   const mutation = useMutation({
     mutationFn: checkOtpApi,
-    onSuccess: (data) => {
-      console.log("OTP verification successful", data);
-      router.replace("/(auth)/login");
-    },
-    onError: (error) => {
-      console.error("OTP verification failed", error);
-    },
   });
   return mutation;
 };
@@ -87,12 +68,6 @@ export const useResendOtp = () => {
 export const useForgotPassword = () => {
   const mutation = useMutation({
     mutationFn: forgotPasswordApi,
-    onSuccess: (data) => {
-      console.log("Forgot password email sent successfully", data);
-    },
-    onError: (error) => {
-      console.error("Forgot password failed", error);
-    },
   });
   return mutation;
 };

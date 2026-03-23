@@ -12,7 +12,6 @@ export default function PaymentMethodPage() {
 
   const handleAdd = () => {
     // Handle adding payment method
-    console.log("Selected payment method:", selectedMethod);
     router.push({ pathname: "(selection)/card-details", params: { selectedMethod: selectedMethod } });
     // Navigate to next screen or handle payment setup
   };

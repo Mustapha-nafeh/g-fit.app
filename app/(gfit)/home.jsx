@@ -18,6 +18,7 @@ import { Pedometer } from "expo-sensors";
 import { useGlobalContext } from "../../context/GlobalContext";
 import { useSaveSteps, useGetMemberSteps, useUpdateStepGoal } from "../../api/fitnessApi";
 import { useGetActiveChallenge } from "../../api/challengesApi";
+import { useGetProfile, useGetUnlockedAvatars, useGetLevels } from "../../api/profile";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from "react-native-svg";
 import { showToast } from "../../constants";
@@ -51,6 +52,18 @@ export default function FitnessDashboard() {
   const getMemberStepsMutation = useGetMemberSteps();
   const updateGoalMutation = useUpdateStepGoal();
   const getActiveChallengemutation = useGetActiveChallenge();
+  const { data: profileData } = useGetProfile();
+  const { data: avatarsData } = useGetUnlockedAvatars();
+  const { data: levelsData, isLoading: levelsLoading } = useGetLevels();
+
+  // XP — use API fields directly
+  const familyXP = profileData?.data?.xp ?? 0;
+  const currentLevel = profileData?.data?.level ?? 1;
+  const xpToNextLevel = profileData?.data?.xp_to_next_level ?? 0;
+  const remainingXP = profileData?.data?.remaining_xp ?? xpToNextLevel;
+  const maxXP = xpToNextLevel;
+  const xpProgress = xpToNextLevel > 0 ? ((xpToNextLevel - remainingXP) / xpToNextLevel) * 100 : 100;
+  const xpToNext = remainingXP;
 
   useEffect(() => {
     // Pulse animation for glow effect
@@ -140,7 +153,6 @@ export default function FitnessDashboard() {
 
   const loadWeeklyStepsFromBackend = async () => {
     if (!member?.token_key) {
-      console.log("Member token not available yet, skipping weekly steps load");
       return;
     }
 
@@ -181,13 +193,11 @@ export default function FitnessDashboard() {
    */
   const syncStepsToBackend = async (forceSync = false) => {
     if (!member?.token_key) {
-      console.log("Member token not available, skipping sync");
       return;
     }
 
     // Prevent concurrent syncs
     if (isSyncing && !forceSync) {
-      console.log("Sync already in progress");
       return;
     }
 
@@ -243,8 +253,6 @@ export default function FitnessDashboard() {
             setLastSyncTime(new Date());
             retryCountRef.current = 0; // Reset retry count on success
 
-            console.log("Steps synced successfully:", data);
-
             if (syncQueueRef.current.length === 0) {
               showToast("success", "Sync Complete", `${stepData.steps_count.toLocaleString()} steps synced`);
             }
@@ -281,14 +289,11 @@ export default function FitnessDashboard() {
     const delay = RETRY_DELAYS[retryCountRef.current];
     retryCountRef.current++;
 
-    console.log(`Scheduling retry #${retryCountRef.current} in ${delay}ms`);
-
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current);
     }
 
     retryTimeoutRef.current = setTimeout(() => {
-      console.log("Retrying sync...");
       processQueue();
     }, delay);
   };
@@ -365,11 +370,9 @@ export default function FitnessDashboard() {
       },
       {
         onSuccess: (data) => {
-          console.log("Daily goal updated successfully:", data);
           showToast("success", "Goal Updated", `New daily goal: ${newGoal.toLocaleString()} steps`);
         },
         onError: (error) => {
-          console.error("Error updating daily goal:", error);
           showToast("error", "Update Failed", "Could not update daily goal");
         },
       }
@@ -662,7 +665,7 @@ export default function FitnessDashboard() {
                   </LinearGradient>
                 </TouchableOpacity> */}
 
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push("/(gfit)/challenges")}>
                   <LinearGradient
                     colors={["#F59E0B", "#F97316"]}
                     className="p-3 rounded-xl"
@@ -698,8 +701,10 @@ export default function FitnessDashboard() {
                     <Ionicons name="information-circle-outline" size={16} color="#8B5CF6" style={{ marginLeft: 6 }} />
                   </View>
                   <View className="flex-row items-center">
-                    <Text className="text-purple-400 text-xs font-bold">Level 7</Text>
-                    <Text className="text-gray-400 text-xs ml-1">• 2,850 / 4,200 XP</Text>
+                    <Text className="text-purple-400 text-xs font-bold">Level {currentLevel}</Text>
+                    <Text className="text-gray-400 text-xs ml-1">
+                      • {familyXP.toLocaleString()} / {maxXP.toLocaleString()} XP
+                    </Text>
                   </View>
                 </View>
 
@@ -711,7 +716,7 @@ export default function FitnessDashboard() {
                       end={{ x: 1, y: 0 }}
                       className="h-full rounded-full"
                       style={{
-                        width: "68%", // 2850 / 4200 = 67.86%
+                        width: `${Math.min(xpProgress, 100)}%`,
                         shadowColor: "#8B5CF6",
                         shadowOffset: { width: 0, height: 0 },
                         shadowOpacity: 0.6,
@@ -723,10 +728,10 @@ export default function FitnessDashboard() {
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center">
                       <Ionicons name="trophy" size={12} color="#F59E0B" style={{ marginRight: 4 }} />
-                      <Text className="text-gray-300 text-xs">1,350 XP to next level</Text>
+                      <Text className="text-gray-300 text-xs">{xpToNext.toLocaleString()} XP to next level</Text>
                     </View>
                     <View className="flex-row items-center">
-                      <Text className="text-purple-400 text-xs font-medium">+120 XP today</Text>
+                      <Text className="text-purple-400 text-xs font-medium">{Math.round(xpProgress)}% complete</Text>
                       <Ionicons name="trending-up" size={12} color="#10B981" style={{ marginLeft: 4 }} />
                     </View>
                   </View>
@@ -1019,18 +1024,18 @@ export default function FitnessDashboard() {
 
       {/* Family XP Modal */}
       <Modal visible={showXPModal} transparent={true} animationType="fade" onRequestClose={() => setShowXPModal(false)}>
-        <View className="flex-1 bg-black/50 justify-center px-4">
+        <View className="flex-1 bg-black/60 justify-center px-4">
           <View
             className="bg-gray-900 rounded-3xl overflow-hidden border border-gray-700/50 max-h-[85%]"
             style={{
-              shadowColor: "#000",
+              shadowColor: "#8B5CF6",
               shadowOffset: { width: 0, height: 20 },
-              shadowOpacity: 0.5,
+              shadowOpacity: 0.4,
               shadowRadius: 25,
               elevation: 25,
             }}
           >
-            {/* Modal Header with Gradient */}
+            {/* Header */}
             <LinearGradient
               colors={["#8B5CF6", "#A855F7", "#C084FC"]}
               start={{ x: 0, y: 0 }}
@@ -1040,155 +1045,221 @@ export default function FitnessDashboard() {
               <View className="flex-row justify-between items-center">
                 <View className="flex-1">
                   <Text style={{ fontFamily: "MontserratAlternates_700Bold" }} className="text-white text-xl mb-1">
-                    Family XP System
+                    Level Progression
                   </Text>
-                  <Text className="text-white/80 text-sm">Level up together as a family</Text>
+                  <Text className="text-white/80 text-sm">XP required to reach each level</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => setShowXPModal(false)}
-                  className="w-10 h-10 bg-white/20 backdrop-blur rounded-xl items-center justify-center"
-                  style={{
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 4,
-                  }}
+                  className="w-10 h-10 bg-white/20 rounded-xl items-center justify-center"
                 >
                   <Ionicons name="close" size={20} color="white" />
                 </TouchableOpacity>
               </View>
             </LinearGradient>
 
-            <ScrollView className="px-6 py-4" showsVerticalScrollIndicator={false}>
-              {/* Current Level Card */}
+            <ScrollView
+              className="px-6 py-4"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 24 }}
+            >
+              {/* Current level summary card */}
               <View
-                className="bg-purple-500/10 backdrop-blur rounded-2xl p-4 mb-5 border border-purple-500/30"
+                className="bg-purple-500/10 border border-purple-500/30 rounded-2xl p-4 mb-5"
                 style={{
                   shadowColor: "#8B5CF6",
                   shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.2,
+                  shadowOpacity: 0.15,
                   shadowRadius: 8,
                 }}
               >
-                <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center justify-between">
                   <View className="flex-row items-center">
                     <View className="w-10 h-10 bg-purple-500/30 rounded-xl items-center justify-center mr-3">
                       <Ionicons name="star" size={20} color="#8B5CF6" />
                     </View>
                     <View>
-                      <Text className="text-white font-bold text-lg">Level 7</Text>
-                      <Text className="text-purple-300 text-xs">Fitness Enthusiasts</Text>
+                      <Text className="text-white font-bold text-base">Level {currentLevel}</Text>
+                      <Text className="text-purple-300 text-xs">Current level</Text>
                     </View>
                   </View>
                   <View className="items-end">
-                    <Text className="text-purple-400 text-base font-bold">2,850 XP</Text>
-                    <Text className="text-gray-400 text-xs">of 4,200 XP</Text>
+                    <Text className="text-purple-400 font-bold text-base">{familyXP.toLocaleString()} XP</Text>
+                    <Text className="text-gray-400 text-xs">{remainingXP.toLocaleString()} to next</Text>
                   </View>
                 </View>
-
-                {/* Progress Bar */}
-                <View className="bg-gray-700/50 h-2 rounded-full overflow-hidden mb-1">
+                <View className="bg-gray-700/50 h-2 rounded-full overflow-hidden mt-3">
                   <LinearGradient
                     colors={["#8B5CF6", "#A855F7", "#C084FC"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     className="h-full rounded-full"
-                    style={{ width: "68%" }}
+                    style={{ width: `${Math.min(xpProgress, 100)}%` }}
                   />
                 </View>
-                <Text className="text-gray-300 text-xs text-center">1,350 XP needed for Level 8</Text>
               </View>
 
-              {/* How to Earn XP - Compact Grid */}
-              <View className="mb-5">
-                <Text className="text-white font-bold text-base mb-3">How to Earn XP</Text>
-                <View className="space-y-2">
-                  <View className="flex-row items-center bg-gray-800/30 rounded-xl p-3">
-                    <View className="w-8 h-8 bg-green-500/20 rounded-lg items-center justify-center mr-3">
-                      <Ionicons name="footsteps" size={16} color="#10B981" />
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-white font-semibold text-sm">Daily Steps</Text>
-                      <Text className="text-gray-400 text-xs">+1 XP per 100 steps</Text>
-                    </View>
-                    <Text className="text-green-400 text-sm font-bold">+75 XP</Text>
+              {/* Levels list */}
+              {levelsLoading ? (
+                <View className="items-center py-8">
+                  <View className="flex-row items-center" style={{ gap: 8 }}>
+                    {[0, 1, 2].map((i) => (
+                      <View key={i} className="w-2.5 h-2.5 bg-purple-500 rounded-full" />
+                    ))}
                   </View>
-
-                  <View className="flex-row items-center bg-gray-800/30 rounded-xl p-3">
-                    <View className="w-8 h-8 bg-blue-500/20 rounded-lg items-center justify-center mr-3">
-                      <Ionicons name="trophy" size={16} color="#3B82F6" />
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-white font-semibold text-sm">Challenges</Text>
-                      <Text className="text-gray-400 text-xs">Complete family challenges</Text>
-                    </View>
-                    <Text className="text-blue-400 text-sm font-bold">+250 XP</Text>
-                  </View>
-
-                  <View className="flex-row items-center bg-gray-800/30 rounded-xl p-3">
-                    <View className="w-8 h-8 bg-orange-500/20 rounded-lg items-center justify-center mr-3">
-                      <Ionicons name="calendar" size={16} color="#F97316" />
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-white font-semibold text-sm">Daily Streaks</Text>
-                      <Text className="text-gray-400 text-xs">Consecutive active days</Text>
-                    </View>
-                    <Text className="text-orange-400 text-sm font-bold">+50 XP</Text>
-                  </View>
+                  <Text className="text-gray-400 text-sm mt-3">Loading levels…</Text>
                 </View>
-              </View>
+              ) : (
+                <View style={{ gap: 10 }}>
+                  {(levelsData?.data || []).map((lvl, index) => {
+                    const isCurrentLevel = lvl.level === currentLevel;
+                    const isCompleted = lvl.level < currentLevel;
+                    const isNext = lvl.level === currentLevel + 1;
+                    const nextLvl = (levelsData?.data || [])[index + 1];
+                    const xpForNext = nextLvl?.xp_required ?? null;
 
-              {/* Level Benefits & System Info - Combined */}
-              <View className="mb-5">
-                <View className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-2xl p-4">
-                  <View className="flex-row items-center justify-between mb-2">
-                    <View className="flex-row items-center">
-                      <View className="w-8 h-8 bg-purple-500/30 rounded-lg items-center justify-center mr-2">
-                        <Ionicons name="gift" size={14} color="#8B5CF6" />
+                    return (
+                      <View
+                        key={lvl.level}
+                        style={{
+                          borderRadius: 18,
+                          borderWidth: isCurrentLevel ? 1.5 : 1,
+                          borderColor: isCurrentLevel
+                            ? "rgba(139,92,246,0.5)"
+                            : isCompleted
+                            ? "rgba(16,185,129,0.25)"
+                            : isNext
+                            ? "rgba(245,158,11,0.3)"
+                            : "rgba(255,255,255,0.06)",
+                          backgroundColor: isCurrentLevel
+                            ? "rgba(139,92,246,0.1)"
+                            : isCompleted
+                            ? "rgba(16,185,129,0.05)"
+                            : "rgba(255,255,255,0.02)",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <View style={{ flexDirection: "row", alignItems: "center", padding: 14, gap: 14 }}>
+                          <LinearGradient
+                            colors={
+                              isCompleted
+                                ? ["#065F46", "#059669"]
+                                : isCurrentLevel
+                                ? ["#5B21B6", "#7C3AED"]
+                                : isNext
+                                ? ["#92400E", "#B45309"]
+                                : ["#1F2937", "#111827"]
+                            }
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: 14,
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {isCompleted ? (
+                              <Ionicons name="checkmark" size={20} color="#fff" />
+                            ) : (
+                              <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>{lvl.level}</Text>
+                            )}
+                          </LinearGradient>
+
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                              <Text
+                                style={{
+                                  color: isCurrentLevel ? "#C4B5FD" : isCompleted ? "#34D399" : "#fff",
+                                  fontWeight: "700",
+                                  fontSize: 15,
+                                }}
+                              >
+                                Level {lvl.level}
+                              </Text>
+                              {isCurrentLevel && (
+                                <View
+                                  style={{
+                                    backgroundColor: "rgba(139,92,246,0.25)",
+                                    borderRadius: 20,
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 2,
+                                    borderWidth: 1,
+                                    borderColor: "rgba(139,92,246,0.4)",
+                                  }}
+                                >
+                                  <Text style={{ color: "#C4B5FD", fontSize: 10, fontWeight: "700" }}>YOU</Text>
+                                </View>
+                              )}
+                              {isNext && (
+                                <View
+                                  style={{
+                                    backgroundColor: "rgba(245,158,11,0.15)",
+                                    borderRadius: 20,
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 2,
+                                  }}
+                                >
+                                  <Text style={{ color: "#FCD34D", fontSize: 10, fontWeight: "700" }}>NEXT</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={{ color: "#6B7280", fontSize: 12 }}>
+                              {lvl.xp_required.toLocaleString()} XP
+                              {xpForNext !== null && ` — ${(xpForNext - 1).toLocaleString()} XP`}
+                            </Text>
+                          </View>
+
+                          <View
+                            style={{
+                              backgroundColor: isCompleted
+                                ? "rgba(16,185,129,0.1)"
+                                : isCurrentLevel
+                                ? "rgba(139,92,246,0.15)"
+                                : "rgba(255,255,255,0.04)",
+                              borderRadius: 12,
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                              alignItems: "center",
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: isCompleted ? "#34D399" : isCurrentLevel ? "#A78BFA" : "#4B5563",
+                                fontWeight: "800",
+                                fontSize: 13,
+                              }}
+                            >
+                              {lvl.xp_required >= 1000 ? `${(lvl.xp_required / 1000).toFixed(1)}k` : lvl.xp_required}
+                            </Text>
+                            <Text style={{ color: "#4B5563", fontSize: 9, marginTop: 1 }}>XP</Text>
+                          </View>
+                        </View>
+
+                        {isCurrentLevel && (
+                          <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
+                            <View
+                              style={{
+                                height: 4,
+                                backgroundColor: "rgba(255,255,255,0.06)",
+                                borderRadius: 2,
+                                overflow: "hidden",
+                              }}
+                            >
+                              <LinearGradient
+                                colors={["#8B5CF6", "#C084FC"]}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={{ height: "100%", borderRadius: 2, width: `${Math.min(xpProgress, 100)}%` }}
+                              />
+                            </View>
+                          </View>
+                        )}
                       </View>
-                      <Text className="text-purple-300 font-semibold text-sm">Level Benefits</Text>
-                    </View>
-                    <View className="flex-row items-center">
-                      <Ionicons name="sparkles" size={14} color="#F59E0B" style={{ marginRight: 4 }} />
-                      <Text className="text-amber-400 text-xs font-medium">Next at Level 10</Text>
-                    </View>
-                  </View>
-                  <Text className="text-gray-300 text-xs leading-4 mb-2">
-                    Unlock exclusive family badges, avatars, and special challenges.
-                  </Text>
-                  <Text className="text-gray-400 text-xs leading-4">
-                    Higher levels require exponentially more XP, making them more prestigious.
-                  </Text>
+                    );
+                  })}
                 </View>
-              </View>
-
-              {/* Action Button */}
-              <TouchableOpacity
-                onPress={() => {
-                  setShowXPModal(false);
-                  router.push("/(gfit)/challenges");
-                }}
-                className="mb-4"
-              >
-                <LinearGradient
-                  colors={["#8B5CF6", "#A855F7", "#C084FC"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  className="py-4 rounded-2xl"
-                  style={{
-                    shadowColor: "#8B5CF6",
-                    shadowOffset: { width: 0, height: 6 },
-                    shadowOpacity: 0.4,
-                    shadowRadius: 8,
-                    elevation: 8,
-                  }}
-                >
-                  <View className="flex-row items-center justify-center">
-                    <Ionicons name="rocket-outline" size={20} color="white" style={{ marginRight: 6 }} />
-                    <Text className="text-white text-center font-bold text-base">Join Challenge to Earn XP</Text>
-                  </View>
-                </LinearGradient>
-              </TouchableOpacity>
+              )}
             </ScrollView>
           </View>
         </View>

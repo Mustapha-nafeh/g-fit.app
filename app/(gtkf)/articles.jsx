@@ -22,7 +22,6 @@ export default function ArticlesPage() {
   // Update articles when data is fetched
   useEffect(() => {
     if (data?.data) {
-      console.log("Articles fetched successfully:", data);
       setArticles(data.data);
     }
   }, [data]);
@@ -55,7 +54,6 @@ export default function ArticlesPage() {
   };
 
   const ReadMore = (slug) => {
-    console.log("Read more pressed for article slug:", slug);
     router.push(`/(gtkf)/article-details?slug=${slug}`);
   };
 

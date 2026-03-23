@@ -44,7 +44,6 @@ const RegisterScreen = () => {
 
           // Extract the actual token string from the object
           const tokenKey = data.data.token_key;
-          console.log("Extracted token key:", tokenKey);
           securestore.setItemAsync("token_key", tokenKey);
 
           router.replace("/(auth)/otp");

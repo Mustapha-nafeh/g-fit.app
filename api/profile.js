@@ -15,8 +15,19 @@ export const getFamilyMembersApi = async () => {
 };
 
 // PROFILE
-export const addFamilyMemberApi = async (first_name) => {
-  const response = await apiClient.post("/add-family-member", first_name);
+export const addFamilyMemberApi = async (memberData) => {
+  const formData = new FormData();
+  formData.append("username", memberData.username);
+  if (memberData.image) {
+    formData.append("image", {
+      uri: memberData.image.uri,
+      type: memberData.image.mimeType || "image/jpeg",
+      name: memberData.image.fileName || "photo.jpg",
+    });
+  }
+  const response = await apiClient.post("/add-family-member", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return response.data;
 };
 
@@ -27,8 +38,20 @@ export const getFamilyMemberApi = async () => {
 };
 
 // PROFILE
-export const updateFamilyMemberApi = async () => {
-  const response = await apiClient.post("/update-family-member");
+export const updateFamilyMemberApi = async (memberData) => {
+  const formData = new FormData();
+  formData.append("token_key", memberData.token_key);
+  formData.append("username", memberData.username);
+  if (memberData.image) {
+    formData.append("image", {
+      uri: memberData.image.uri,
+      type: memberData.image.mimeType || "image/jpeg",
+      name: memberData.image.fileName || "photo.jpg",
+    });
+  }
+  const response = await apiClient.post("/update-family-member", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return response.data;
 };
 
@@ -44,9 +67,27 @@ export const updateFamilyInfoApi = async (familyData) => {
   return response.data;
 };
 
+// PROFILE - Update family profile with name, email, phone
+export const updateFamilyProfileApi = async (profileData) => {
+  const response = await apiClient.post("/update-profile", profileData);
+  return response.data;
+};
+
 // PROFILE
 export const updateMemberProfileApi = async (memberData) => {
   const response = await apiClient.post("/update-family-member", memberData);
+  return response.data;
+};
+
+// AVATARS
+export const getUnlockedAvatarsApi = async () => {
+  const response = await apiClient.get("/avatars/unlocked");
+  return response.data;
+};
+
+// AVATARS
+export const selectAvatarApi = async (avatarData) => {
+  const response = await apiClient.post("/avatars/select", avatarData);
   return response.data;
 };
 
@@ -104,12 +145,14 @@ export const useDeleteProfile = () => {
 export const useUpdateFamilyInfo = () => {
   const mutation = useMutation({
     mutationFn: updateFamilyInfoApi,
-    onSuccess: (data) => {
-      console.log("Family info updated successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error updating family info:", error);
-    },
+  });
+  return mutation;
+};
+
+// Update Family Profile Hook (name, email, phone)
+export const useUpdateFamilyProfile = () => {
+  const mutation = useMutation({
+    mutationFn: updateFamilyProfileApi,
   });
   return mutation;
 };
@@ -118,12 +161,40 @@ export const useUpdateFamilyInfo = () => {
 export const useUpdateMemberProfile = () => {
   const mutation = useMutation({
     mutationFn: updateMemberProfileApi,
-    onSuccess: (data) => {
-      console.log("Member profile updated successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error updating member profile:", error);
-    },
   });
   return mutation;
+};
+
+// Get Unlocked Avatars Hook
+export const useGetUnlockedAvatars = () => {
+  const query = useQuery({
+    queryFn: getUnlockedAvatarsApi,
+    queryKey: ["unlocked-avatars"],
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+  });
+  return query;
+};
+
+// Select Avatar Hook
+export const useSelectAvatar = () => {
+  const mutation = useMutation({
+    mutationFn: selectAvatarApi,
+  });
+  return mutation;
+};
+
+// LEVELS
+export const getLevelsApi = async () => {
+  const response = await apiClient.get("/content/get-levels");
+  return response.data;
+};
+
+// Get Levels Hook
+export const useGetLevels = () => {
+  return useQuery({
+    queryFn: getLevelsApi,
+    queryKey: ["levels"],
+    staleTime: 60 * 60 * 1000, // 1 hour — levels rarely change
+  });
 };

@@ -43,12 +43,6 @@ export const getFamiliesLeaderboardApi = async (challengeId) => {
 export const useGetAvailableChallenges = () => {
   return useMutation({
     mutationFn: getAvailableChallengesApi,
-    onSuccess: (data) => {
-      console.log("Available challenges loaded successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error loading available challenges:", error);
-    },
   });
 };
 
@@ -56,12 +50,6 @@ export const useGetAvailableChallenges = () => {
 export const useGetChallengeHistory = () => {
   return useMutation({
     mutationFn: getChallengeHistoryApi,
-    onSuccess: (data) => {
-      console.log("Challenge history loaded successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error loading challenge history:", error);
-    },
   });
 };
 
@@ -69,12 +57,6 @@ export const useGetChallengeHistory = () => {
 export const useGetActiveChallenge = () => {
   return useMutation({
     mutationFn: getActiveChallengeApi,
-    onSuccess: (data) => {
-      console.log("Active challenge loaded successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error loading active challenge:", error);
-    },
   });
 };
 
@@ -82,12 +64,6 @@ export const useGetActiveChallenge = () => {
 export const useGetFamiliesLeaderboard = () => {
   return useMutation({
     mutationFn: getFamiliesLeaderboardApi,
-    onSuccess: (data) => {
-      console.log("Families leaderboard loaded successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error loading families leaderboard:", error);
-    },
   });
 };
 
@@ -95,12 +71,6 @@ export const useGetFamiliesLeaderboard = () => {
 export const useJoinChallenge = () => {
   return useMutation({
     mutationFn: joinChallengeApi,
-    onSuccess: (data) => {
-      console.log("Challenge joined successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error joining challenge:", error);
-    },
   });
 };
 
@@ -108,11 +78,5 @@ export const useJoinChallenge = () => {
 export const useLeaveChallenge = () => {
   return useMutation({
     mutationFn: leaveChallengeApi,
-    onSuccess: (data) => {
-      console.log("Challenge left successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error leaving challenge:", error);
-    },
   });
 };

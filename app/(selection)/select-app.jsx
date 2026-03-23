@@ -7,10 +7,6 @@ import { router } from "expo-router";
 const AppSelectionScreen = () => {
   const [selectedApp, setSelectedApp] = useState(null);
 
-  const handleBack = () => {
-    console.log("Back pressed");
-  };
-
   const handleAppSelect = (appType) => {
     setSelectedApp(appType);
   };
@@ -52,13 +48,13 @@ const AppSelectionScreen = () => {
       backgroundColor: "bg-gray-300",
       image: require("../../assets/G-FIT 3.png"),
     },
-    {
-      id: "adults",
-      title: "Adults kit",
-      subtitle: "Adults fitness and wellness",
-      backgroundColor: "bg-gray-300",
-      placeholder: "ADULT",
-    },
+    // {
+    //   id: "adults",
+    //   title: "Adults kit",
+    //   subtitle: "Adults fitness and wellness",
+    //   backgroundColor: "bg-gray-300",
+    //   placeholder: "ADULT",
+    // },
     {
       id: "gtkf",
       title: "Kids Kit",

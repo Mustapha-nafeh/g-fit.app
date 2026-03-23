@@ -62,7 +62,7 @@ export default function GfitLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? "fitness" : "fitness-outline"} size={24} color={color} />
+            <Ionicons name={focused ? "home" : "home-outline"} size={24} color={color} />
           ),
         }}
       />
@@ -84,7 +84,7 @@ export default function GfitLayout() {
           ),
         }}
       />
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="activity"
         options={{
           title: "Activity",
@@ -92,7 +92,7 @@ export default function GfitLayout() {
             <Ionicons name={focused ? "analytics" : "analytics-outline"} size={24} color={color} />
           ),
         }}
-      />
+      /> */}
       <Tabs.Screen
         name="profile"
         options={{

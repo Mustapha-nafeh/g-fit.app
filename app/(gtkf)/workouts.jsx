@@ -49,8 +49,6 @@ export default function WorkoutsPage() {
 
   // Handle category selection
   const handleCategorySelect = (categoryId) => {
-    console.log("Filtering by category:", categoryId);
-    console.log("Current workouts count:", workouts.length);
     setSelectedCategory(categoryId);
     setFilterFields("tags", categoryId === "all" ? "" : categoryId);
   };
@@ -64,7 +62,6 @@ export default function WorkoutsPage() {
         Array.isArray(workout.tags) &&
         workout.tags.some((tag) => tag.toLowerCase().includes(categoryId.toLowerCase()))
     );
-    console.log(`Category ${categoryId} count:`, filtered.length, "from", workouts.length, "total");
     return filtered.length;
   };
 
@@ -194,17 +191,6 @@ export default function WorkoutsPage() {
             {!isLoading && !isError && (
               <View className="space-y-3 pb-6">
                 {(() => {
-                  console.log(
-                    "Rendering workouts - filteredData:",
-                    filteredData?.length || 0,
-                    "workouts:",
-                    workouts.length
-                  );
-                  console.log("Selected category:", selectedCategory);
-                  console.log("Filter fields:", filterFields);
-                  if (filteredData && filteredData.length > 0) {
-                    console.log("Sample filtered workout tags:", filteredData[0]?.tags);
-                  }
                   return null;
                 })()}
                 {filteredData && filteredData.length > 0 ? (

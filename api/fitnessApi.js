@@ -91,12 +91,6 @@ export const getFamilyChallengeLeaderboardApi = async (params) => {
 export const useSaveSteps = () => {
   const mutation = useMutation({
     mutationFn: saveStepsApi,
-    onSuccess: (data) => {
-      console.log("Steps saved successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error saving steps:", error);
-    },
   });
   return mutation;
 };
@@ -137,12 +131,6 @@ export const useGetFamilySteps = () => {
 export const useUpdateStepGoal = () => {
   const mutation = useMutation({
     mutationFn: updateStepGoalApi,
-    onSuccess: (data) => {
-      console.log("Step goal updated successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error updating step goal:", error);
-    },
   });
   return mutation;
 };
@@ -163,12 +151,6 @@ export const useGetStepHistory = (params, enabled = true) => {
 export const useGetUserChallenges = () => {
   const mutation = useMutation({
     mutationFn: getUserChallengesApi,
-    onSuccess: (data) => {
-      console.log("User challenges retrieved successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error getting user challenges:", error);
-    },
   });
 
   return mutation;
@@ -178,12 +160,6 @@ export const useGetUserChallenges = () => {
 export const useGetAvailableChallenges = () => {
   const mutation = useMutation({
     mutationFn: getAvailableChallengesApi,
-    onSuccess: (data) => {
-      console.log("Available challenges retrieved successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error getting available challenges:", error);
-    },
   });
 
   return mutation;
@@ -193,12 +169,6 @@ export const useGetAvailableChallenges = () => {
 export const useJoinChallenge = () => {
   const mutation = useMutation({
     mutationFn: joinChallengeApi,
-    onSuccess: (data) => {
-      console.log("Challenge joined successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error joining challenge:", error);
-    },
   });
 
   return mutation;
@@ -208,12 +178,6 @@ export const useJoinChallenge = () => {
 export const useLeaveChallenge = () => {
   const mutation = useMutation({
     mutationFn: leaveChallengeApi,
-    onSuccess: (data) => {
-      console.log("Challenge left successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error leaving challenge:", error);
-    },
   });
 
   return mutation;
@@ -223,12 +187,6 @@ export const useLeaveChallenge = () => {
 export const useGetChallengeProgress = () => {
   const mutation = useMutation({
     mutationFn: getChallengeProgressApi,
-    onSuccess: (data) => {
-      console.log("Challenge progress retrieved successfully:", data);
-    },
-    onError: (error) => {
-      console.error("Error getting challenge progress:", error);
-    },
   });
 
   return mutation;

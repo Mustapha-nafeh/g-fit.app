@@ -6,6 +6,10 @@ import { useGetActiveChallenge, useGetFamiliesLeaderboard } from "../../api/chal
 import { useGlobalContext } from "../../context/GlobalContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { showToast } from "../../constants";
+import { useGetUnlockedAvatars } from "../../api/profile";
+
+const STORAGE_BASE = "https://backend.g-fit.app/storage/";
+const buildImageUrl = (path) => (path ? (path.startsWith("http") ? path : `${STORAGE_BASE}${path}`) : null);
 
 export default function ChallengeLeaderboard() {
   const [selectedTimeframe, setSelectedTimeframe] = useState("Today");
@@ -15,6 +19,11 @@ export default function ChallengeLeaderboard() {
 
   const getActiveChallengemutation = useGetActiveChallenge();
   const getFamiliesLeaderboardMutation = useGetFamiliesLeaderboard();
+  const { data: avatarsData } = useGetUnlockedAvatars();
+
+  // Selected family avatar image (from avatars API, same as profile page)
+  const selectedAvatarImage = avatarsData?.data?.avatars?.find((a) => a.is_selected)?.image || null;
+  const familyAvatarUrl = buildImageUrl(selectedAvatarImage);
 
   useEffect(() => {
     if (member?.token_key) {
@@ -23,9 +32,7 @@ export default function ChallengeLeaderboard() {
   }, [member]);
 
   const loadActiveChallenge = () => {
-    // Don't load if member data is not available yet
     if (!member?.token_key) {
-      console.log("Member token not available yet, skipping challenge load");
       return;
     }
 
@@ -105,7 +112,7 @@ export default function ChallengeLeaderboard() {
     activeChallengeData?.family_members_leaderboard?.map((member, index) => ({
       id: member.member_id,
       name: member.username,
-      avatar: member.avatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop",
+      avatar: buildImageUrl(member.avatar),
       todaySteps: member.total_steps || 0,
       weeklySteps: member.total_steps || 0,
       dailyGoal: activeChallengeData.challenge.steps_required || 10000,
@@ -123,148 +130,175 @@ export default function ChallengeLeaderboard() {
     return steps.toString();
   };
 
-  const getPositionIcon = (position) => {
-    switch (position) {
-      case 1:
-        return "🥇";
-      case 2:
-        return "🥈";
-      case 3:
-        return "🥉";
-      default:
-        return `${position}`;
-    }
+  const RankBadge = ({ position }) => {
+    if (position === 1) return <Text style={{ fontSize: 26 }}>🥇</Text>;
+    if (position === 2) return <Text style={{ fontSize: 26 }}>🥈</Text>;
+    if (position === 3) return <Text style={{ fontSize: 26 }}>🥉</Text>;
+    return (
+      <View
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 10,
+          backgroundColor: "rgba(255,255,255,0.07)",
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.1)",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text style={{ color: "#9CA3AF", fontSize: 13, fontWeight: "700" }}>#{position}</Text>
+      </View>
+    );
   };
+
+  const SectionHeader = ({ title, icon, color }) => (
+    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 14, gap: 8 }}>
+      <View
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          backgroundColor: `${color}18`,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Ionicons name={icon} size={15} color={color} />
+      </View>
+      <Text style={{ fontFamily: "MontserratAlternates_600SemiBold", color: "#fff", fontSize: 16 }}>{title}</Text>
+    </View>
+  );
 
   const FamilyMemberCard = ({ member }) => (
     <View
-      className={`flex-row items-center p-4 rounded-2xl mb-3 ${
-        member.isMe ? "border-2 border-cyan-500" : "border border-gray-700"
-      }`}
       style={{
-        backgroundColor: member.isMe ? "rgba(6, 182, 212, 0.1)" : "rgba(31, 41, 55, 0.5)",
+        flexDirection: "row",
+        alignItems: "center",
+        padding: 14,
+        borderRadius: 20,
+        marginBottom: 10,
+        backgroundColor: member.isMe ? "rgba(6,182,212,0.08)" : "rgba(255,255,255,0.03)",
+        borderWidth: 1,
+        borderColor: member.isMe ? "rgba(6,182,212,0.35)" : "rgba(255,255,255,0.07)",
         shadowColor: member.isMe ? "#06B6D4" : "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: member.isMe ? 0.3 : 0.2,
-        shadowRadius: 3.84,
+        shadowOffset: { width: 0, height: member.isMe ? 4 : 2 },
+        shadowOpacity: member.isMe ? 0.2 : 0.15,
+        shadowRadius: member.isMe ? 8 : 4,
       }}
     >
-      <View className="flex-row items-center mr-4">
-        <Text className="text-2xl mr-3 font-bold">{getPositionIcon(member.position)}</Text>
-        <Image
-          source={{ uri: member.avatar }}
-          className="w-12 h-12 rounded-full"
-          style={{
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 3.84,
-          }}
-        />
+      <View style={{ width: 36, alignItems: "center", marginRight: 12 }}>
+        <RankBadge position={member.position} />
       </View>
-
-      <View className="flex-1">
+      <View
+        style={{
+          width: 54,
+          height: 54,
+          borderRadius: 16,
+          overflow: "hidden",
+          marginRight: 14,
+        }}
+      >
+        {member.avatar ? (
+          <Image source={{ uri: member.avatar }} style={{ width: 54, height: 54 }} resizeMode="cover" />
+        ) : (
+          <LinearGradient
+            colors={["#0E4D6E", "#0E2A4A"]}
+            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+          >
+            <Ionicons name="person" size={20} color="#06B6D4" />
+          </LinearGradient>
+        )}
+      </View>
+      <View style={{ flex: 1 }}>
         <Text
-          style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-          className={`text-lg ${member.isMe ? "text-cyan-400" : "text-white"}`}
+          style={{
+            fontFamily: "MontserratAlternates_600SemiBold",
+            color: member.isMe ? "#22D3EE" : "#fff",
+            fontSize: 15,
+            marginBottom: 3,
+          }}
         >
           {member.name}
         </Text>
-        <View className="flex-row items-center mt-1">
-          <Ionicons name="footsteps" size={14} color="#9CA3AF" />
-          <Text className="text-gray-400 text-sm ml-1">
-            {selectedTimeframe === "Today"
-              ? `${member.todaySteps.toLocaleString()} steps today`
-              : `${member.weeklySteps.toLocaleString()} steps this week`}
-          </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Ionicons name="footsteps" size={12} color="#6B7280" />
+            <Text style={{ color: "#6B7280", fontSize: 12 }}>
+              {selectedTimeframe === "Today" ? member.todaySteps.toLocaleString() : member.weeklySteps.toLocaleString()}
+            </Text>
+          </View>
         </View>
-        <View className="flex-row items-center mt-1">
-          <Ionicons name="flame" size={14} color="#F59E0B" />
-          <Text className="text-gray-400 text-sm ml-1">{member.streak} day streak</Text>
-        </View>
-      </View>
-
-      <View className="items-end">
-        <View
-          className={`w-3 h-3 rounded-full mb-2 ${
-            selectedTimeframe === "Today"
-              ? member.todaySteps >= member.dailyGoal
-                ? "bg-green-500"
-                : "bg-orange-500"
-              : "bg-cyan-500"
-          }`}
-          style={{
-            shadowColor:
-              selectedTimeframe === "Today"
-                ? member.todaySteps >= member.dailyGoal
-                  ? "#10B981"
-                  : "#F97316"
-                : "#06B6D4",
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.8,
-            shadowRadius: 4,
-          }}
-        />
-        <Text className="text-gray-400 text-xs font-medium">
-          {selectedTimeframe === "Today"
-            ? `${Math.round((member.todaySteps / member.dailyGoal) * 100)}%`
-            : formatSteps(member.weeklySteps)}
-        </Text>
       </View>
     </View>
   );
 
   const FamilyLeaderboardCard = ({ family }) => (
     <View
-      className={`flex-row items-center p-4 rounded-2xl mb-3 ${
-        family.isYours ? "border-2 border-purple-500" : "border border-gray-700"
-      }`}
       style={{
-        backgroundColor: family.isYours ? "rgba(139, 92, 246, 0.1)" : "rgba(31, 41, 55, 0.5)",
+        flexDirection: "row",
+        alignItems: "center",
+        padding: 14,
+        borderRadius: 20,
+        marginBottom: 10,
+        backgroundColor: family.isYours ? "rgba(139,92,246,0.08)" : "rgba(255,255,255,0.03)",
+        borderWidth: 1,
+        borderColor: family.isYours ? "rgba(139,92,246,0.35)" : "rgba(255,255,255,0.07)",
         shadowColor: family.isYours ? "#8B5CF6" : "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: family.isYours ? 0.3 : 0.2,
-        shadowRadius: 3.84,
+        shadowOffset: { width: 0, height: family.isYours ? 4 : 2 },
+        shadowOpacity: family.isYours ? 0.2 : 0.15,
+        shadowRadius: family.isYours ? 8 : 4,
       }}
     >
-      <View className="flex-row items-center mr-4">
-        <Text className="text-2xl mr-3 font-bold">{getPositionIcon(family.rank)}</Text>
-        <View className="w-12 h-12 rounded-full bg-gray-700 justify-center items-center overflow-hidden">
-          {family.family_avatar ? (
-            <Image source={{ uri: family.family_avatar }} className="w-12 h-12 rounded-full" resizeMode="cover" />
+      <View style={{ width: 36, alignItems: "center", marginRight: 12 }}>
+        <RankBadge position={family.rank} />
+      </View>
+      <View
+        style={{
+          width: 54,
+          height: 54,
+          borderRadius: 16,
+          overflow: "hidden",
+          marginRight: 14,
+        }}
+      >
+        {(() => {
+          // For your own family, prefer the selected avatar from the avatars API
+          const imgUrl = family.isYours
+            ? familyAvatarUrl || buildImageUrl(family.family_avatar)
+            : buildImageUrl(family.family_avatar);
+          return imgUrl ? (
+            <Image source={{ uri: imgUrl }} style={{ width: 54, height: 54 }} resizeMode="cover" />
           ) : (
             <LinearGradient
-              colors={["#374151", "#1F2937"]}
-              className="w-12 h-12 rounded-full justify-center items-center"
+              colors={["#3A2D6E", "#262135"]}
+              style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
             >
-              <Ionicons name="people" size={20} color="#9CA3AF" />
+              <Ionicons name="people" size={20} color="#8B5CF6" />
             </LinearGradient>
-          )}
-        </View>
+          );
+        })()}
       </View>
-
-      <View className="flex-1">
+      <View style={{ flex: 1 }}>
         <Text
-          style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-          className={`text-lg ${family.isYours ? "text-purple-400" : "text-white"}`}
+          style={{
+            fontFamily: "MontserratAlternates_600SemiBold",
+            color: family.isYours ? "#C4B5FD" : "#fff",
+            fontSize: 15,
+            marginBottom: 3,
+          }}
         >
           {family.family_name}
+          {family.isYours && <Text style={{ color: "#8B5CF6", fontSize: 11 }}> (you)</Text>}
         </Text>
-        <View className="flex-row items-center mt-1">
-          <Ionicons name="footsteps" size={14} color="#9CA3AF" />
-          <Text className="text-gray-400 text-sm ml-1">{family.total_steps?.toLocaleString() || 0} total steps</Text>
-        </View>
-        <View className="flex-row items-center mt-1">
-          <Ionicons name="calendar" size={14} color="#9CA3AF" />
-          <Text className="text-gray-400 text-sm ml-1">Joined {new Date(family.joined_at).toLocaleDateString()}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <Ionicons name="footsteps" size={12} color="#6B7280" />
+          <Text style={{ color: "#6B7280", fontSize: 12 }}>{family.total_steps?.toLocaleString() || 0} steps</Text>
         </View>
       </View>
-
-      <View className="items-end">
-        <LinearGradient colors={["#06B6D4", "#3B82F6"]} className="px-3 py-1.5 rounded-full">
-          <Text className="text-white text-xs font-bold">#{family.rank}</Text>
-        </LinearGradient>
-        <Text className="text-gray-400 text-xs mt-2 font-medium">{formatSteps(family.total_steps || 0)}</Text>
+      <View style={{ alignItems: "flex-end" }}>
+        <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>{formatSteps(family.total_steps || 0)}</Text>
+        <Text style={{ color: "#6B7280", fontSize: 10, marginTop: 2 }}>total</Text>
       </View>
     </View>
   );
@@ -284,195 +318,316 @@ export default function ChallengeLeaderboard() {
             />
           }
         >
-          {/* Header */}
-          <View className="px-6 pt-6 pb-4">
-            <View className="flex-row justify-between items-start mb-6">
-              <View className="flex-1">
-                <Text
-                  style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-                  className="text-white text-3xl leading-tight"
+          <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+              <TouchableOpacity onPress={() => router.back()} activeOpacity={0.75} style={{ marginRight: 12 }}>
+                <View
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 12,
+                    backgroundColor: "rgba(255,255,255,0.07)",
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.08)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
-                  Challenge{"\n"}Leaderboard
+                  <Ionicons name="chevron-back" size={20} color="#fff" />
+                </View>
+              </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: "MontserratAlternates_600SemiBold", color: "#fff", fontSize: 22 }}>
+                  Leaderboard
                 </Text>
               </View>
-              <View className="flex-row" style={{ gap: 12 }}>
-                <TouchableOpacity onPress={() => router.push("/(gfit)/challenges")}>
-                  <LinearGradient
-                    colors={["#F59E0B", "#F97316"]}
-                    className="p-3 rounded-xl"
-                    style={{
-                      shadowColor: "#F59E0B",
-                      shadowOffset: { width: 0, height: 4 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 4.65,
-                    }}
-                  >
-                    <Ionicons name="trophy" size={20} color="white" />
-                  </LinearGradient>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={loadActiveChallenge}
-                  disabled={getActiveChallengemutation.isPending || getFamiliesLeaderboardMutation.isPending}
+              <TouchableOpacity
+                onPress={() => router.push("/(gfit)/challenges")}
+                activeOpacity={0.75}
+                style={{ marginRight: 10 }}
+              >
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    backgroundColor: "rgba(245,158,11,0.12)",
+                    borderWidth: 1,
+                    borderColor: "rgba(245,158,11,0.25)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
-                  <LinearGradient
-                    colors={["#374151", "#1F2937"]}
-                    className="p-3 rounded-xl"
-                    style={{
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.25,
-                      shadowRadius: 3.84,
-                    }}
-                  >
-                    <Ionicons name="refresh" size={20} color="#06B6D4" />
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
+                  <Ionicons name="trophy" size={17} color="#F59E0B" />
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={loadActiveChallenge}
+                activeOpacity={0.75}
+                disabled={getActiveChallengemutation.isPending || getFamiliesLeaderboardMutation.isPending}
+              >
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    backgroundColor: "rgba(6,182,212,0.1)",
+                    borderWidth: 1,
+                    borderColor: "rgba(6,182,212,0.2)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="refresh" size={17} color="#06B6D4" />
+                </View>
+              </TouchableOpacity>
             </View>
           </View>
 
-          <View className="px-6">
-            {/* Active Challenge Info */}
+          <View style={{ paddingHorizontal: 20 }}>
             {getActiveChallengemutation.isPending ? (
-              <View className="bg-gray-800 border border-gray-700 rounded-2xl p-6 mb-6 items-center">
-                <Text className="text-cyan-400">Loading active challenge...</Text>
+              <View
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.03)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.07)",
+                  borderRadius: 20,
+                  padding: 20,
+                  marginBottom: 20,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#06B6D4", fontSize: 14 }}>Loading challenge…</Text>
               </View>
             ) : activeChallenge ? (
               <View
-                className="rounded-2xl overflow-hidden mb-6"
                 style={{
-                  shadowColor: "#000",
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  marginBottom: 20,
+                  shadowColor: "#06B6D4",
                   shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4.65,
+                  shadowOpacity: 0.15,
+                  shadowRadius: 12,
+                  elevation: 6,
                 }}
               >
                 <LinearGradient
-                  colors={["rgba(6, 182, 212, 0.2)", "rgba(59, 130, 246, 0.2)"]}
-                  className="border border-cyan-500/30 p-5"
+                  colors={["rgba(6,182,212,0.15)", "rgba(59,130,246,0.12)"]}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: "rgba(6,182,212,0.25)",
+                    borderRadius: 20,
+                    padding: 18,
+                  }}
                 >
-                  <View className="flex-row justify-between items-start mb-3">
-                    <View className="flex-1 mr-3">
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      marginBottom: 14,
+                    }}
+                  >
+                    <View style={{ flex: 1, marginRight: 12 }}>
                       <Text
-                        style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-                        className="text-cyan-400 text-xl mb-2"
+                        style={{
+                          fontFamily: "MontserratAlternates_600SemiBold",
+                          color: "#22D3EE",
+                          fontSize: 17,
+                          marginBottom: 4,
+                        }}
                       >
                         {activeChallenge.title}
                       </Text>
-                      <Text className="text-gray-300 text-sm mb-2">{activeChallenge.description}</Text>
-                      <Text className="text-gray-400 text-xs">{activeChallenge.goal}</Text>
+                      <Text style={{ color: "#94A3B8", fontSize: 13, lineHeight: 18 }}>{activeChallenge.goal}</Text>
                     </View>
-                    <View
-                      className={`px-3 py-1.5 rounded-full ${
-                        activeChallenge.isExpired ? "bg-red-500" : "bg-green-500"
-                      }`}
+                    <LinearGradient
+                      colors={activeChallenge.isExpired ? ["#7F1D1D", "#991B1B"] : ["#065F46", "#059669"]}
+                      style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}
                     >
-                      <Text className="text-white text-xs font-bold">
-                        {activeChallenge.isExpired ? "Expired" : "Active"}
+                      <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800" }}>
+                        {activeChallenge.isExpired ? "EXPIRED" : "● ACTIVE"}
                       </Text>
-                    </View>
+                    </LinearGradient>
                   </View>
-
-                  <View className="flex-row justify-between items-center pt-3 border-t border-cyan-500/20">
-                    <View className="flex-row items-center">
-                      <View className="w-8 h-8 bg-cyan-500/20 rounded-full items-center justify-center mr-2">
-                        <Ionicons name="time" size={16} color="#06B6D4" />
-                      </View>
-                      <Text className="text-gray-300 text-sm">
-                        {activeChallenge.daysLeft > 0
-                          ? `${activeChallenge.daysLeft} day${activeChallenge.daysLeft !== 1 ? "s" : ""} left`
-                          : "Challenge ended"}
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      gap: 16,
+                      paddingTop: 12,
+                      borderTopWidth: 1,
+                      borderTopColor: "rgba(6,182,212,0.15)",
+                    }}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Ionicons name="time-outline" size={14} color="#06B6D4" />
+                      <Text style={{ color: "#94A3B8", fontSize: 13 }}>
+                        {activeChallenge.daysLeft > 0 ? `${activeChallenge.daysLeft} days left` : "Ended"}
                       </Text>
                     </View>
-                    <View className="flex-row items-center">
-                      <View className="w-8 h-8 bg-cyan-500/20 rounded-full items-center justify-center mr-2">
-                        <Ionicons name="people" size={16} color="#06B6D4" />
-                      </View>
-                      <Text className="text-gray-300 text-sm">{familyStats.totalFamilies} families</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Ionicons name="people-outline" size={14} color="#06B6D4" />
+                      <Text style={{ color: "#94A3B8", fontSize: 13 }}>{familyStats.totalFamilies} families</Text>
                     </View>
+                    {activeChallengeData?.completion_xp ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Ionicons name="star" size={14} color="#10B981" />
+                        <Text style={{ color: "#34D399", fontSize: 13, fontWeight: "700" }}>
+                          +{activeChallengeData.completion_xp} XP
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
                 </LinearGradient>
               </View>
             ) : (
               <View
-                className="bg-gray-800 border border-gray-700 rounded-2xl p-8 mb-6 items-center"
                 style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4.65,
+                  backgroundColor: "rgba(255,255,255,0.03)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.07)",
+                  borderRadius: 20,
+                  padding: 32,
+                  marginBottom: 20,
+                  alignItems: "center",
                 }}
               >
-                <Ionicons name="trophy-outline" size={64} color="#4B5563" />
-                <Text className="text-gray-400 text-lg font-medium mt-4">No Active Challenge</Text>
-                <Text className="text-gray-500 text-sm mt-2 text-center">Join a challenge to see the leaderboard</Text>
-                <TouchableOpacity onPress={() => router.push("/(gfit)/challenges")} className="mt-4">
+                <View
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 20,
+                    backgroundColor: "rgba(245,158,11,0.08)",
+                    borderWidth: 1,
+                    borderColor: "rgba(245,158,11,0.15)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 14,
+                  }}
+                >
+                  <Ionicons name="trophy-outline" size={30} color="#F59E0B" />
+                </View>
+                <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600", marginBottom: 6 }}>
+                  No Active Challenge
+                </Text>
+                <Text
+                  style={{
+                    color: "#6B7280",
+                    fontSize: 13,
+                    textAlign: "center",
+                    marginBottom: 18,
+                  }}
+                >
+                  Join a challenge to compete on the leaderboard
+                </Text>
+                <TouchableOpacity onPress={() => router.push("/(gfit)/challenges")}>
                   <LinearGradient
                     colors={["#06B6D4", "#3B82F6"]}
-                    className="px-6 py-3 rounded-xl"
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                     style={{
-                      shadowColor: "#06B6D4",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 3.84,
+                      paddingHorizontal: 24,
+                      paddingVertical: 12,
+                      borderRadius: 14,
                     }}
                   >
-                    <Text className="text-white font-semibold">Browse Challenges</Text>
+                    <Text style={{ color: "#fff", fontWeight: "700", fontSize: 14 }}>Browse Challenges</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
             )}
 
-            {/* Family Progress Summary */}
             {activeChallenge && (
               <View
-                className="bg-gray-800 border border-gray-700 rounded-2xl p-5 mb-6"
                 style={{
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4.65,
+                  backgroundColor: "rgba(255,255,255,0.03)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.07)",
+                  borderRadius: 20,
+                  padding: 18,
+                  marginBottom: 20,
                 }}
               >
-                <Text style={{ fontFamily: "MontserratAlternates_600SemiBold" }} className="text-white text-xl mb-4">
-                  Your Family Progress
-                </Text>
+                <SectionHeader title="Your Family Progress" icon="pulse-outline" color="#8B5CF6" />
 
-                <View className="flex-row justify-between mb-5" style={{ gap: 12 }}>
-                  <View className="flex-1 bg-purple-500/10 border border-purple-500/30 rounded-xl p-3">
-                    <Text className="text-purple-400 text-xs mb-1">Position</Text>
-                    <Text className="text-white text-2xl font-bold">#{familyStats.position}</Text>
-                    <Text className="text-gray-400 text-xs">of {familyStats.totalFamilies}</Text>
-                  </View>
-                  <View className="flex-1 bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-3">
-                    <Text className="text-cyan-400 text-xs mb-1">Total Steps</Text>
-                    <Text className="text-white text-2xl font-bold">{formatSteps(familyStats.totalSteps)}</Text>
-                    <Text className="text-gray-400 text-xs">steps</Text>
-                  </View>
-                  <View className="flex-1 bg-green-500/10 border border-green-500/30 rounded-xl p-3">
-                    <Text className="text-green-400 text-xs mb-1">Progress</Text>
-                    <Text className="text-white text-2xl font-bold">{familyStats.weeklyProgress}%</Text>
-                    <Text className="text-gray-400 text-xs">complete</Text>
-                  </View>
+                <View style={{ flexDirection: "row", gap: 10, marginBottom: 18 }}>
+                  {[
+                    {
+                      label: "Position",
+                      value: `#${familyStats.position}`,
+                      sub: `of ${familyStats.totalFamilies}`,
+                      color: "#8B5CF6",
+                    },
+                    {
+                      label: "Total Steps",
+                      value: formatSteps(familyStats.totalSteps),
+                      sub: "steps",
+                      color: "#06B6D4",
+                    },
+                    {
+                      label: "Progress",
+                      value: `${familyStats.weeklyProgress}%`,
+                      sub: "complete",
+                      color: "#10B981",
+                    },
+                  ].map(({ label, value, sub, color }) => (
+                    <View
+                      key={label}
+                      style={{
+                        flex: 1,
+                        backgroundColor: `${color}10`,
+                        borderWidth: 1,
+                        borderColor: `${color}28`,
+                        borderRadius: 14,
+                        padding: 12,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color,
+                          fontSize: 10,
+                          fontWeight: "600",
+                          marginBottom: 4,
+                        }}
+                      >
+                        {label}
+                      </Text>
+                      <Text style={{ color: "#fff", fontSize: 20, fontWeight: "800" }}>{value}</Text>
+                      <Text style={{ color: "#6B7280", fontSize: 10, marginTop: 2 }}>{sub}</Text>
+                    </View>
+                  ))}
                 </View>
 
                 <View>
-                  <View className="flex-row justify-between mb-2">
-                    <Text className="text-gray-400 text-sm">Challenge Goal Progress</Text>
-                    <Text className="text-cyan-400 text-sm font-semibold">{familyStats.weeklyProgress}%</Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Text style={{ color: "#6B7280", fontSize: 12 }}>Challenge Goal</Text>
+                    <Text style={{ color: "#06B6D4", fontSize: 12, fontWeight: "700" }}>
+                      {familyStats.weeklyProgress}%
+                    </Text>
                   </View>
-                  <View className="bg-gray-700 h-3 rounded-full overflow-hidden">
+                  <View
+                    style={{
+                      height: 8,
+                      backgroundColor: "rgba(255,255,255,0.06)",
+                      borderRadius: 4,
+                      overflow: "hidden",
+                    }}
+                  >
                     <LinearGradient
-                      colors={["#06B6D4", "#3B82F6"]}
+                      colors={["#06B6D4", "#8B5CF6"]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
-                      className="h-full rounded-full"
                       style={{
+                        height: "100%",
+                        borderRadius: 4,
                         width: `${familyStats.weeklyProgress}%`,
-                        shadowColor: "#06B6D4",
-                        shadowOffset: { width: 0, height: 0 },
-                        shadowOpacity: 0.5,
-                        shadowRadius: 4,
                       }}
                     />
                   </View>
@@ -480,72 +635,123 @@ export default function ChallengeLeaderboard() {
               </View>
             )}
 
-            {/* Family Members Leaderboard */}
             {activeChallenge && (
               <>
-                {/* Timeframe Selector */}
                 <View
-                  className="bg-gray-800 border border-gray-700 rounded-2xl p-1.5 mb-6"
                   style={{
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 3.84,
+                    flexDirection: "row",
+                    backgroundColor: "rgba(255,255,255,0.04)",
+                    borderRadius: 16,
+                    padding: 4,
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.06)",
+                    marginBottom: 18,
                   }}
                 >
-                  <View className="flex-row">
-                    {timeframes.map((timeframe) => (
-                      <TouchableOpacity
-                        key={timeframe}
-                        onPress={() => setSelectedTimeframe(timeframe)}
-                        className="flex-1"
-                      >
-                        {selectedTimeframe === timeframe ? (
-                          <LinearGradient colors={["#06B6D4", "#3B82F6"]} className="py-3 rounded-xl">
-                            <Text className="text-center font-semibold text-white">{timeframe}</Text>
-                          </LinearGradient>
-                        ) : (
-                          <View className="py-3">
-                            <Text className="text-center font-medium text-gray-400">{timeframe}</Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                  {timeframes.map((timeframe) => (
+                    <TouchableOpacity
+                      key={timeframe}
+                      onPress={() => setSelectedTimeframe(timeframe)}
+                      style={{ flex: 1 }}
+                      activeOpacity={0.8}
+                    >
+                      {selectedTimeframe === timeframe ? (
+                        <LinearGradient
+                          colors={["#0E7490", "#2563EB"]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={{
+                            paddingVertical: 9,
+                            borderRadius: 12,
+                            alignItems: "center",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: "#fff",
+                              fontWeight: "700",
+                              fontSize: 13,
+                            }}
+                          >
+                            {timeframe}
+                          </Text>
+                        </LinearGradient>
+                      ) : (
+                        <View
+                          style={{
+                            paddingVertical: 9,
+                            alignItems: "center",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: "#6B7280",
+                              fontWeight: "600",
+                              fontSize: 13,
+                            }}
+                          >
+                            {timeframe}
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))}
                 </View>
 
-                <View className="mb-6">
-                  <Text style={{ fontFamily: "MontserratAlternates_600SemiBold" }} className="text-white text-xl mb-4">
-                    Family Members
-                  </Text>
+                <View style={{ marginBottom: 20 }}>
+                  <SectionHeader title="Family Members" icon="person-outline" color="#06B6D4" />
                   {familyMembers.length > 0 ? (
                     familyMembers.map((member) => <FamilyMemberCard key={member.id} member={member} />)
                   ) : (
-                    <View className="bg-gray-800 border border-gray-700 rounded-2xl p-6 items-center">
-                      <Text className="text-gray-400">No family members found</Text>
+                    <View
+                      style={{
+                        backgroundColor: "rgba(255,255,255,0.03)",
+                        borderWidth: 1,
+                        borderColor: "rgba(255,255,255,0.07)",
+                        borderRadius: 16,
+                        padding: 24,
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text style={{ color: "#6B7280", fontSize: 14 }}>No family members found</Text>
                     </View>
                   )}
                 </View>
               </>
             )}
 
-            {/* Families Leaderboard */}
             {activeChallenge && (
-              <View className="mb-6">
-                <Text style={{ fontFamily: "MontserratAlternates_600SemiBold" }} className="text-white text-xl mb-4">
-                  All Families
-                </Text>
+              <View style={{ marginBottom: 20 }}>
+                <SectionHeader title="All Families" icon="people-outline" color="#F59E0B" />
                 {getFamiliesLeaderboardMutation.isPending ? (
-                  <View className="bg-gray-800 border border-gray-700 rounded-2xl p-6 items-center">
-                    <Text className="text-gray-400">Loading families leaderboard...</Text>
+                  <View
+                    style={{
+                      backgroundColor: "rgba(255,255,255,0.03)",
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.07)",
+                      borderRadius: 16,
+                      padding: 24,
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={{ color: "#6B7280", fontSize: 14 }}>Loading standings…</Text>
                   </View>
                 ) : processedFamiliesLeaderboard.length > 0 ? (
                   processedFamiliesLeaderboard.map((family) => (
                     <FamilyLeaderboardCard key={family.family_id} family={family} />
                   ))
                 ) : (
-                  <View className="bg-gray-800 border border-gray-700 rounded-2xl p-6 items-center">
-                    <Text className="text-gray-400">No families participating yet</Text>
+                  <View
+                    style={{
+                      backgroundColor: "rgba(255,255,255,0.03)",
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.07)",
+                      borderRadius: 16,
+                      padding: 24,
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={{ color: "#6B7280", fontSize: 14 }}>No families participating yet</Text>
                   </View>
                 )}
               </View>

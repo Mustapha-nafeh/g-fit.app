@@ -10,6 +10,7 @@ import {
   MontserratAlternates_600SemiBold,
 } from "@expo-google-fonts/montserrat-alternates";
 import Toast from "react-native-toast-message";
+import { useNotificationListeners } from "../hooks/useNotifications";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,9 @@ export default function RootLayout() {
     MontserratAlternates_700Bold,
     MontserratAlternates_600SemiBold,
   });
+
+  // Listen for incoming notifications app-wide
+  useNotificationListeners();
 
   if (!fontsLoaded) {
     return null;

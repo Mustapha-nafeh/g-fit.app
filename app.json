@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "GTKF",
-    "slug": "GTKF",
+    "name": "G-fit app",
+    "slug": "gtkf",
     "scheme": "gtkf",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -15,9 +15,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.gtkf.app",
+      "bundleIdentifier": "app.g-fit",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSHealthShareUsageDescription": "G-fit uses your step count to track your daily activity and family fitness goals.",
+        "NSHealthUpdateUsageDescription": "G-fit saves your step data to help you and your family stay on track with your fitness goals.",
+        "NSMotionUsageDescription": "G-fit uses your device's motion sensors to count your steps and track your daily activity."
       },
       "splash": {
         "image": "./assets/G-FIT 2.png",
@@ -31,12 +34,25 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.gtkf.app"
+      "package": "app.g-fit",
+      "permissions": ["android.permission.ACTIVITY_RECOGNITION"]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-router", "expo-font", "expo-secure-store"],
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/G-FIT 2.png",
+          "color": "#ffffff"
+        }
+      ],
+      "expo-video"
+    ],
     "extra": {
       "router": {},
       "eas": {

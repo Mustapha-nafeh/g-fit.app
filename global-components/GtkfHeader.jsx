@@ -15,7 +15,6 @@ const GtkfHeader = ({ title, currentTab = "workouts" }) => {
       // Navigate back to app selection
       router.replace("/(selection)/select-app");
     } catch (error) {
-      console.log("Error clearing stored data:", error);
       router.replace("/(selection)/select-app");
     }
   };

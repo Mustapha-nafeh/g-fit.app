@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useAddFamilyMember, useGetFamilyMembers } from "../../api/profile";
+import { useRegisterPushNotifications } from "../../hooks/useNotifications";
 import Modal from "react-native-modal";
 import { showToast } from "../../constants";
 
@@ -12,6 +13,9 @@ export default function WelcomeUserSelection() {
   const [isModalVisible, setModalVisible] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
   const { selectedApp } = useLocalSearchParams();
+
+  // Push notifications
+  const { registerAndStoreToken } = useRegisterPushNotifications();
 
   // Get members from API
   const { data: membersData, isLoading, isError, refetch } = useGetFamilyMembers();
@@ -37,6 +41,9 @@ export default function WelcomeUserSelection() {
         if (selectedApp) {
           await SecureStore.setItemAsync("selectedApp", selectedApp);
         }
+
+        // Register and store push notification token
+        await registerAndStoreToken(selectedUserData.token_key);
 
         // Navigate based on selected app
         let route = "/(gfit)/home"; // Default fallback
