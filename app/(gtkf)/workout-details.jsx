@@ -62,30 +62,51 @@ const ExerciseRow = ({ exercise, index }) => (
     style={{
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: 12,
+      paddingVertical: 14,
       borderBottomWidth: 1,
-      borderBottomColor: "#F3F4F6",
+      borderBottomColor: "#F1F5F9",
     }}
   >
+    {/* Index bubble */}
     <View
       style={{
-        width: 28,
-        height: 28,
-        borderRadius: 8,
+        width: 32,
+        height: 32,
+        borderRadius: 10,
         backgroundColor: "#0EA5E910",
         alignItems: "center",
         justifyContent: "center",
-        marginRight: 12,
+        marginRight: 14,
       }}
     >
-      <Text style={{ fontSize: 12, fontWeight: "700", color: "#0EA5E9" }}>{index + 1}</Text>
+      <Text style={{ fontSize: 13, fontWeight: "700", color: "#0EA5E9" }}>{index + 1}</Text>
     </View>
-    <Text style={{ flex: 1, fontSize: 15, color: "#1F2937", fontWeight: "500" }}>
+
+    {/* Name */}
+    <Text style={{ flex: 1, fontSize: 15, color: "#1F2937", fontWeight: "600", textTransform: "capitalize" }}>
       {exercise.name || exercise.title}
     </Text>
-    {(exercise.duration || exercise.time) && (
-      <Text style={{ fontSize: 13, color: "#9CA3AF" }}>{exercise.duration || exercise.time}</Text>
-    )}
+
+    {/* Sets × Reps pills */}
+    <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
+      {exercise.sets && (
+        <View style={{ backgroundColor: "#EDE9FE", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+          <Text style={{ fontSize: 12, fontWeight: "600", color: "#7C3AED" }}>{exercise.sets} sets</Text>
+        </View>
+      )}
+      {exercise.reps && (
+        <View style={{ backgroundColor: "#D1FAE5", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+          <Text style={{ fontSize: 12, fontWeight: "600", color: "#059669" }}>{exercise.reps} reps</Text>
+        </View>
+      )}
+      {(exercise.duration || exercise.time) && (
+        <View style={{ backgroundColor: "#E0F2FE", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+          <Text style={{ fontSize: 12, fontWeight: "600", color: "#0284C7" }}>
+            {exercise.duration || exercise.time}
+          </Text>
+        </View>
+      )}
+    </View>
   </View>
 );
 
@@ -140,7 +161,7 @@ export default function WorkoutPage() {
   });
 
   const workout = data?.data ?? null;
-  const videoId = workout?.video_id ?? workout?.bunny_video_id ?? null;
+  const videoUrl = workout?.link ?? workout?.video_url ?? workout?.videoUrl ?? null;
 
   // ─── Handlers ────────────────────────────────────────────────────────────
   const handleShare = async () => {
@@ -187,11 +208,13 @@ export default function WorkoutPage() {
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState />;
 
-  const hasVideo = !!(workout?.video_url || workout?.videoUrl);
-  const hasEmbeddedVideo = !!videoId;
+  const hasVideo = !!videoUrl;
+  const hasEmbeddedVideo = !!videoUrl;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0F172A" }} edges={["top"]}>
+      {/* White fill behind the bottom half so over-scroll shows white, not dark */}
+      <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "40%", backgroundColor: "white" }} />
       <StatusBar barStyle="light-content" />
 
       <ScrollView
@@ -225,6 +248,7 @@ export default function WorkoutPage() {
             <Text style={{ color: "white", fontSize: 14, fontWeight: "600" }}>Back</Text>
           </TouchableOpacity>
 
+          {/* Share button — commented out
           <TouchableOpacity
             onPress={handleShare}
             style={{
@@ -238,12 +262,13 @@ export default function WorkoutPage() {
           >
             <Ionicons name="share-outline" size={19} color="white" />
           </TouchableOpacity>
+          */}
         </View>
 
         {/* ── Hero: Bunny video player OR static image thumb ── */}
         <View style={{ marginHorizontal: 20, marginBottom: 6 }}>
-          {videoId ? (
-            <BunnyVideoPlayer videoId={videoId} style={{ height: 240, borderRadius: 24 }} />
+          {videoUrl ? (
+            <BunnyVideoPlayer url={videoUrl} style={{ height: 240, borderRadius: 24 }} />
           ) : (
             <TouchableOpacity onPress={openVideo} activeOpacity={0.9}>
               <View
@@ -328,6 +353,7 @@ export default function WorkoutPage() {
             <Text style={{ flex: 1, fontSize: 24, fontWeight: "800", color: "#0F172A", lineHeight: 30 }}>
               {workout?.title || workout?.name || "Workout"}
             </Text>
+            {/* Fav + copy icon buttons — commented out
             <View style={{ flexDirection: "row", gap: 8, marginLeft: 12 }}>
               <IconBtn
                 icon={isFavorite ? "heart" : "heart-outline"}
@@ -337,12 +363,13 @@ export default function WorkoutPage() {
               />
               <IconBtn icon="copy-outline" onPress={handleCopyLink} />
             </View>
+            */}
           </View>
 
           {/* Badges */}
           <View style={{ flexDirection: "row", gap: 8, marginBottom: 22, flexWrap: "wrap" }}>
-            {workout?.duration && (
-              <Badge icon="time-outline" label={`${workout.duration} mins`} color="#0EA5E9" bg="#E0F2FE" />
+            {workout?.duration_minutes > 0 && (
+              <Badge icon="time-outline" label={`${workout.duration_minutes} mins`} color="#0EA5E9" bg="#E0F2FE" />
             )}
             {(workout?.difficulty || workout?.difficulty_level) && (
               <Badge
@@ -382,6 +409,7 @@ export default function WorkoutPage() {
           {/* Exercise list */}
           {workout?.exercises?.length > 0 && (
             <>
+              <View style={{ height: 1, backgroundColor: "#F1F5F9", marginBottom: 20 }} />
               <Text
                 style={{
                   fontSize: 14,
@@ -397,6 +425,48 @@ export default function WorkoutPage() {
               {workout.exercises.map((exercise, index) => (
                 <ExerciseRow key={index} exercise={exercise} index={index} />
               ))}
+            </>
+          )}
+
+          {/* Tags */}
+          {workout?.tags?.length > 0 && (
+            <>
+              <View style={{ height: 1, backgroundColor: "#F1F5F9", marginTop: 20, marginBottom: 20 }} />
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "600",
+                  color: "#64748B",
+                  letterSpacing: 0.8,
+                  marginBottom: 12,
+                  textTransform: "uppercase",
+                }}
+              >
+                Tags
+              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {workout.tags.map((tag, index) => (
+                  <View
+                    key={index}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: "#F0F9FF",
+                      borderWidth: 1,
+                      borderColor: "#BAE6FD",
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 20,
+                      gap: 5,
+                    }}
+                  >
+                    <Ionicons name="pricetag-outline" size={12} color="#0284C7" />
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: "#0284C7", textTransform: "capitalize" }}>
+                      {tag}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </>
           )}
         </View>
@@ -441,7 +511,7 @@ export default function WorkoutPage() {
           </TouchableOpacity>
         )}
 
-        {/* Secondary row */}
+        {/* Secondary row (Save / Share / Copy Link) — commented out
         <View style={{ flexDirection: "row", justifyContent: "center", gap: 28, marginTop: 14 }}>
           <TouchableOpacity
             onPress={() => setIsFavorite((v) => !v)}
@@ -467,6 +537,7 @@ export default function WorkoutPage() {
             <Text style={{ fontSize: 13, color: "#9CA3AF", fontWeight: "500" }}>Copy Link</Text>
           </TouchableOpacity>
         </View>
+        */}
       </View>
     </SafeAreaView>
   );

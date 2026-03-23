@@ -38,9 +38,9 @@ const GtkfHeader = ({ title, currentTab = "workouts" }) => {
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity>
+        {/* <TouchableOpacity>
           <Ionicons name="search" size={24} color="white" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {/* Title */}

@@ -346,20 +346,22 @@ export default function ChallengeLeaderboard() {
                 activeOpacity={0.75}
                 style={{ marginRight: 10 }}
               >
-                <View
+                <LinearGradient
+                  colors={["#F59E0B", "#F97316"]}
                   style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    backgroundColor: "rgba(245,158,11,0.12)",
-                    borderWidth: 1,
-                    borderColor: "rgba(245,158,11,0.25)",
+                    width: 38,
+                    height: 38,
+                    borderRadius: 12,
                     alignItems: "center",
                     justifyContent: "center",
+                    shadowColor: "#F59E0B",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 4.65,
                   }}
                 >
-                  <Ionicons name="trophy" size={17} color="#F59E0B" />
-                </View>
+                  <Ionicons name="trophy" size={17} color="white" />
+                </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={loadActiveChallenge}

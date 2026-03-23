@@ -1225,20 +1225,6 @@ export default function ProfilePage() {
                 <Text className="text-gray-500 text-xs mt-1">Optional: Add your family email</Text>
               </View>
 
-              {/* Family Phone Input */}
-              <View className="mb-6">
-                <Text className="text-white font-semibold text-base mb-3">Family Phone</Text>
-                <TextInput
-                  value={familyPhone}
-                  onChangeText={setFamilyPhone}
-                  placeholder="Enter phone number (optional)"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="phone-pad"
-                  className="bg-gray-800/50 border border-gray-700/30 rounded-xl px-4 py-3 text-white text-base"
-                />
-                <Text className="text-gray-500 text-xs mt-1">Optional: Add your family phone number</Text>
-              </View>
-
               {/* Family Avatar Selection */}
               <View className="mb-6">
                 <Text className="text-white font-semibold text-base mb-1">Family Avatar</Text>

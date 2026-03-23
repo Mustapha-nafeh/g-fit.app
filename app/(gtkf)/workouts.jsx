@@ -165,11 +165,11 @@ export default function WorkoutsPage() {
                   </Text>
                 )}
               </View>
-              <TouchableOpacity>
+              {/* <TouchableOpacity>
                 <Text style={{ fontFamily: "MontserratAlternates_700Bold" }} className="text-gray-400">
                   See All
                 </Text>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
 
             {/* Loading State */}

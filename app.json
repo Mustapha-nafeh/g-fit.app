@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "G-fit app",
-    "slug": "gtkf",
-    "scheme": "gtkf",
+    "slug": "GTKF",
+    "scheme": "GTKF",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/G-FIT 2.png",

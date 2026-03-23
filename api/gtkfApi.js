@@ -26,12 +26,6 @@ export const workoutByIdApi = async (slug) => {
   return response.data;
 };
 
-// GET BUNNY VIDEO SIGNED URL
-export const getVideoTokenApi = async (videoId) => {
-  const response = await apiClient.get(`/content/video-token?video_id=${videoId}`);
-  return response.data;
-};
-
 // ARTICLES HOOK
 export const useGetArticles = (type = "kids", enabled = true) => {
   return useQuery({
@@ -71,19 +65,7 @@ export const useGetWorkoutById = (slug, enabled = true) => {
     queryKey: ["workout", slug],
     queryFn: () => workoutByIdApi(slug),
     enabled: enabled && !!slug,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-  });
-};
-
-// BUNNY VIDEO SIGNED URL HOOK
-export const useGetVideoToken = (videoId, enabled = true) => {
-  return useQuery({
-    queryKey: ["video-token", videoId],
-    queryFn: () => getVideoTokenApi(videoId),
-    enabled: enabled && !!videoId,
-    staleTime: 4 * 60 * 1000, // refresh before typical 5-min token expiry
-    cacheTime: 5 * 60 * 1000,
-    retry: 1,
+    staleTime: 5 * 60 * 1000,
+    cacheTime: 10 * 60 * 1000,
   });
 };

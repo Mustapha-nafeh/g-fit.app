@@ -103,9 +103,11 @@ ${article.content.substring(0, 150)}...
                 Article Details
               </Text>
             </View>
+            {/* Share button — commented out
             <TouchableOpacity onPress={handleShare}>
               <Ionicons name="share-outline" size={24} color="white" />
             </TouchableOpacity>
+            */}
           </View>
 
           {/* Main Article Image */}
@@ -125,12 +127,14 @@ ${article.content.substring(0, 150)}...
                 >
                   {article?.title || "Article Title"}
                 </Text>
+                {/* Share button — commented out
                 <TouchableOpacity
                   onPress={handleShare}
                   className="w-10 h-10 bg-gray-200 rounded-full items-center justify-center ml-4"
                 >
                   <Ionicons name="share-outline" size={20} color="gray" />
                 </TouchableOpacity>
+                */}
               </View>
 
               {/* Rating */}
