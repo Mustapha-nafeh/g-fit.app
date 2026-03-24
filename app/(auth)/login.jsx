@@ -75,14 +75,14 @@ const LoginScreen = () => {
             <Image source={require("../../assets/Ellipse1.png")} className=" absolute top-0 left-0" />
 
             {/* Header with Back Button */}
-            <View className="flex-row items-center mb-8">
+            {/* <View className="flex-row items-center mb-8">
               <TouchableOpacity
                 onPress={handleBack}
                 className="w-12 h-12 rounded-2xl border border-gray-400 justify-center items-center"
               >
                 <Ionicons name="chevron-back" size={24} color="white" />
               </TouchableOpacity>
-            </View>
+            </View> */}
 
             {/* Content Container */}
             <View className="flex-1 justify-center min-h-[500px]">

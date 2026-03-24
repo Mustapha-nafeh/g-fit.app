@@ -42,8 +42,8 @@ const OnboardingScreen = ({ currentPage = 3, totalPages = 4 }) => {
     checkStoredData();
   }, []);
 
-  const handleNext = () => {
-    router.push(`/(selection)/select-app`);
+  const handleNext = async () => {
+    router.push("/(onboarding)/get-started");
   };
 
   return (
