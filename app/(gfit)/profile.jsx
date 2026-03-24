@@ -33,6 +33,7 @@ import {
   useGetLevels,
 } from "../../api/profile";
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from "react-native-svg";
+import { STORAGE_BASE_URL } from "../../config";
 
 export default function ProfilePage() {
   const { member, setMember } = useGlobalContext();
@@ -86,7 +87,7 @@ export default function ProfilePage() {
   const handleEditMember = (memberData) => {
     setEditingMember(memberData);
     setEditName(memberData.username || "");
-    setEditImage(memberData.image ? { uri: `https://backend.g-fit.app/storage/${memberData.image}` } : null);
+    setEditImage(memberData.image ? { uri: `${STORAGE_BASE_URL}/${memberData.image}` } : null);
     setShowEditModal(true);
   };
 
@@ -376,7 +377,7 @@ export default function ProfilePage() {
                       {avatarsData?.data?.avatars?.find((avatar) => avatar.is_selected)?.image ? (
                         <Image
                           source={{
-                            uri: `https://backend.g-fit.app/storage/${
+                            uri: `${STORAGE_BASE_URL}/${
                               avatarsData.data.avatars.find((avatar) => avatar.is_selected).image
                             }`,
                           }}
@@ -449,7 +450,7 @@ export default function ProfilePage() {
                       <View className="flex-row items-center flex-1">
                         {memberData.image ? (
                           <Image
-                            source={{ uri: `https://backend.g-fit.app/storage/${memberData.image}` }}
+                            source={{ uri: `${STORAGE_BASE_URL}/${memberData.image}` }}
                             style={{
                               width: 52,
                               height: 52,
@@ -578,7 +579,7 @@ export default function ProfilePage() {
                               }}
                             >
                               <Image
-                                source={{ uri: `https://backend.g-fit.app/storage/${active.image}` }}
+                                source={{ uri: `${STORAGE_BASE_URL}/${active.image}` }}
                                 style={{ width: "100%", height: "100%", borderRadius: 34 }}
                                 resizeMode="cover"
                               />
@@ -666,7 +667,7 @@ export default function ProfilePage() {
                                 >
                                   <View style={{ position: "relative", width: 52, height: 52 }}>
                                     <Image
-                                      source={{ uri: `https://backend.g-fit.app/storage/${avatar.image}` }}
+                                      source={{ uri: `${STORAGE_BASE_URL}/${avatar.image}` }}
                                       style={{ width: 52, height: 52, borderRadius: 14 }}
                                       resizeMode="cover"
                                     />
@@ -794,7 +795,7 @@ export default function ProfilePage() {
                                 {/* Avatar image — full visibility, just dimmed slightly */}
                                 <View style={{ position: "relative", width: 60, height: 60 }}>
                                   <Image
-                                    source={{ uri: `https://backend.g-fit.app/storage/${avatar.image}` }}
+                                    source={{ uri: `${STORAGE_BASE_URL}/${avatar.image}` }}
                                     style={{ width: 60, height: 60, borderRadius: 16 }}
                                     resizeMode="cover"
                                   />
@@ -890,7 +891,7 @@ export default function ProfilePage() {
                             {/* Next avatar preview */}
                             <View style={{ position: "relative" }}>
                               <Image
-                                source={{ uri: `https://backend.g-fit.app/storage/${next.image}` }}
+                                source={{ uri: `${STORAGE_BASE_URL}/${next.image}` }}
                                 style={{ width: 52, height: 52, borderRadius: 14 }}
                                 resizeMode="cover"
                               />
@@ -1277,7 +1278,7 @@ export default function ProfilePage() {
                                     >
                                       <View style={{ position: "relative", width: 48, height: 48 }}>
                                         <Image
-                                          source={{ uri: `https://backend.g-fit.app/storage/${avatar.image}` }}
+                                          source={{ uri: `${STORAGE_BASE_URL}/${avatar.image}` }}
                                           style={{ width: 48, height: 48, borderRadius: 12 }}
                                           resizeMode="cover"
                                         />
@@ -1383,7 +1384,7 @@ export default function ProfilePage() {
                                   >
                                     <View style={{ position: "relative", width: 52, height: 52 }}>
                                       <Image
-                                        source={{ uri: `https://backend.g-fit.app/storage/${avatar.image}` }}
+                                        source={{ uri: `${STORAGE_BASE_URL}/${avatar.image}` }}
                                         style={{ width: 52, height: 52, borderRadius: 12 }}
                                         resizeMode="cover"
                                       />

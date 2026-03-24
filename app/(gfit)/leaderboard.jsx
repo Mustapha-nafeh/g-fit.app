@@ -7,9 +7,9 @@ import { useGlobalContext } from "../../context/GlobalContext";
 import { LinearGradient } from "expo-linear-gradient";
 import { showToast } from "../../constants";
 import { useGetUnlockedAvatars } from "../../api/profile";
+import { STORAGE_BASE_URL } from "../../config";
 
-const STORAGE_BASE = "https://backend.g-fit.app/storage/";
-const buildImageUrl = (path) => (path ? (path.startsWith("http") ? path : `${STORAGE_BASE}${path}`) : null);
+const buildImageUrl = (path) => (path ? (path.startsWith("http") ? path : `${STORAGE_BASE_URL}/${path}`) : null);
 
 export default function ChallengeLeaderboard() {
   const [selectedTimeframe, setSelectedTimeframe] = useState("Today");

@@ -2,9 +2,10 @@ import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
 import { showToast } from "../constants";
+import { API_BASE_URL } from "../config";
 
 const apiClient = axios.create({
-  baseURL: "https://backend.g-fit.app/api/v1", // Your API base URL
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },

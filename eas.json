@@ -7,6 +7,10 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "API_BASE_URL": "https://backend.g-fit.app/api/v1",
+        "STORAGE_BASE_URL": "https://backend.g-fit.app/storage"
+      },
       "ios": {
         "cache": {
           "disabled": true
@@ -14,10 +18,18 @@
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "API_BASE_URL": "https://backend.g-fit.app/api/v1",
+        "STORAGE_BASE_URL": "https://backend.g-fit.app/storage"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "API_BASE_URL": "https://backend.g-fit.app/api/v1",
+        "STORAGE_BASE_URL": "https://backend.g-fit.app/storage"
+      }
     }
   },
   "submit": {
