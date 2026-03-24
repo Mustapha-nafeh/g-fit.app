@@ -5,7 +5,7 @@
     "scheme": "GTKF",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon-appstore.png",
+    "icon": "./assets/icon appstore bg.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
