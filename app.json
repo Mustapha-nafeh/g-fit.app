@@ -34,7 +34,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "app.g-fit",
+      "package": "app.gfit",
       "permissions": ["android.permission.ACTIVITY_RECOGNITION"]
     },
     "web": {
@@ -51,7 +51,8 @@
           "color": "#ffffff"
         }
       ],
-      "expo-video"
+      "expo-video",
+      "react-native-iap"
     ],
     "extra": {
       "router": {},

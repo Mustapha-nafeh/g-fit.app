@@ -56,7 +56,7 @@ const OTPVerificationScreen = () => {
         onSuccess: (data) => {
           showToast("success", "OTP Verified", "Your OTP has been verified successfully!");
           securestore.setItemAsync("access_token", data.data.access_token);
-          router.replace("(selection)/select-user");
+          router.replace("(selection)/subscribe");
         },
         onError: (error) => {
           showToast("error", "OTP Verification Failed", error.response?.data?.message || "An error occurred");
@@ -93,10 +93,6 @@ const OTPVerificationScreen = () => {
     router.back();
   };
 
-  const handlelog = async () => {
-    const tokenKey = await securestore.getItemAsync("token_key");
-  };
-
   return (
     <>
       <StatusBar barStyle="light-content" />
@@ -117,7 +113,7 @@ const OTPVerificationScreen = () => {
             {/* Header with Back Button */}
             <View className="flex-row items-center mb-12">
               <TouchableOpacity
-                onPress={handlelog}
+                onPress={handleBack}
                 className="w-12 h-12 rounded-2xl border border-gray-400 justify-center items-center"
               >
                 <Ionicons name="chevron-back" size={24} color="white" />
