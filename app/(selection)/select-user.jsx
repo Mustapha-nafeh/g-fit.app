@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, StatusBar, SafeAreaView, TextInput } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StatusBar,
+  SafeAreaView,
+  TextInput,
+  ActivityIndicator,
+  ScrollView,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -8,382 +17,510 @@ import { useRegisterPushNotifications } from "../../hooks/useNotifications";
 import Modal from "react-native-modal";
 import { showToast } from "../../constants";
 
+// ─── Member card ───────────────────────────────────────────────────────────────
+
+const MemberCard = ({ member, onPress }) => (
+  <TouchableOpacity
+    onPress={() => onPress(member.id)}
+    activeOpacity={0.8}
+    style={{
+      width: "47%",
+      height: 156,
+      borderRadius: 24,
+      backgroundColor: member.color || "#494358",
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 14,
+    }}
+  >
+    <View
+      style={{
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        borderWidth: 2,
+        borderColor: member.textColor || "rgba(255,255,255,0.5)",
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 12,
+      }}
+    >
+      <Ionicons name="person-outline" size={28} color={member.textColor || "#FFFFFF"} />
+    </View>
+    <Text
+      numberOfLines={1}
+      style={{
+        fontFamily: "MontserratAlternates_600SemiBold",
+        fontSize: 15,
+        color: member.textColor || "#FFFFFF",
+        paddingHorizontal: 12,
+        textAlign: "center",
+      }}
+    >
+      {member.username || "User"}
+    </Text>
+  </TouchableOpacity>
+);
+
+// ─── Add member card ───────────────────────────────────────────────────────────
+
+const AddMemberCard = ({ onPress }) => (
+  <TouchableOpacity
+    onPress={onPress}
+    activeOpacity={0.7}
+    style={{
+      width: "47%",
+      height: 156,
+      borderRadius: 24,
+      backgroundColor: "rgba(255,255,255,0.05)",
+      borderWidth: 1.5,
+      borderColor: "rgba(255,255,255,0.15)",
+      borderStyle: "dashed",
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: 14,
+    }}
+  >
+    <View
+      style={{
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        borderWidth: 2,
+        borderColor: "rgba(214,235,235,0.4)",
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 12,
+      }}
+    >
+      <Ionicons name="add" size={28} color="#D6EBEB" />
+    </View>
+    <Text
+      style={{
+        fontFamily: "MontserratAlternates_600SemiBold",
+        fontSize: 14,
+        color: "#D6EBEB",
+      }}
+    >
+      Add Member
+    </Text>
+  </TouchableOpacity>
+);
+
+// ─── Member grid ───────────────────────────────────────────────────────────────
+
+const MemberGrid = ({ members, onSelectUser, onAddMember }) => {
+  // Flatten members + one "add" slot, then chunk into rows of 2
+  const items = [...members, { type: "add" }];
+  const rows = [];
+  for (let i = 0; i < items.length; i += 2) {
+    rows.push(items.slice(i, i + 2));
+  }
+
+  return (
+    <View>
+      {rows.map((row, rowIdx) => (
+        <View key={rowIdx} style={{ flexDirection: "row", justifyContent: "space-between" }}>
+          {row.map((item, colIdx) =>
+            item.type === "add" ? (
+              <AddMemberCard key="add" onPress={onAddMember} />
+            ) : (
+              <MemberCard key={item.id} member={item} onPress={onSelectUser} />
+            )
+          )}
+          {/* Spacer if row has only one item and it's not the add button */}
+          {row.length === 1 && row[0].type !== "add" && <View style={{ width: "47%" }} />}
+        </View>
+      ))}
+    </View>
+  );
+};
+
+// ─── Empty state ───────────────────────────────────────────────────────────────
+
+const EmptyState = ({ onAdd }) => (
+  <View style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 24 }}>
+    <View
+      style={{
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: "rgba(214,235,235,0.08)",
+        borderWidth: 1,
+        borderColor: "rgba(214,235,235,0.2)",
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 24,
+      }}
+    >
+      <Ionicons name="people-outline" size={36} color="#D6EBEB" />
+    </View>
+    <Text
+      style={{
+        fontFamily: "MontserratAlternates_700Bold",
+        fontSize: 22,
+        color: "#FFFFFF",
+        marginBottom: 12,
+        textAlign: "center",
+      }}
+    >
+      No family members yet
+    </Text>
+    <Text
+      style={{
+        fontFamily: "MontserratAlternates_400Regular",
+        fontSize: 15,
+        color: "#A0A0A0",
+        lineHeight: 23,
+        textAlign: "center",
+        marginBottom: 36,
+        maxWidth: 260,
+      }}
+    >
+      Add your first family member to start competing together.
+    </Text>
+    <TouchableOpacity
+      onPress={onAdd}
+      activeOpacity={0.85}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#D6EBEB",
+        paddingHorizontal: 28,
+        paddingVertical: 15,
+        borderRadius: 28,
+        gap: 8,
+      }}
+    >
+      <Ionicons name="add" size={20} color="#262135" />
+      <Text
+        style={{
+          fontFamily: "MontserratAlternates_700Bold",
+          fontSize: 16,
+          color: "#262135",
+        }}
+      >
+        Add First Member
+      </Text>
+    </TouchableOpacity>
+  </View>
+);
+
+// ─── Add member modal ──────────────────────────────────────────────────────────
+
+const AddMemberModal = ({ visible, name, onChangeName, onSubmit, onCancel, isLoading, hasError }) => (
+  <Modal isVisible={visible} onBackdropPress={onCancel} avoidKeyboard>
+    <View
+      style={{
+        backgroundColor: "#3A2D6E",
+        borderRadius: 24,
+        padding: 28,
+        marginHorizontal: 4,
+      }}
+    >
+      <Text
+        style={{
+          fontFamily: "MontserratAlternates_700Bold",
+          fontSize: 20,
+          color: "#FFFFFF",
+          marginBottom: 20,
+        }}
+      >
+        Add New Member
+      </Text>
+
+      <TextInput
+        value={name}
+        onChangeText={onChangeName}
+        placeholder="Enter member's name"
+        placeholderTextColor="#6B7280"
+        style={{
+          fontFamily: "MontserratAlternates_400Regular",
+          fontSize: 15,
+          color: "#FFFFFF",
+          backgroundColor: "rgba(255,255,255,0.07)",
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.12)",
+          borderRadius: 14,
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          marginBottom: hasError ? 10 : 24,
+        }}
+      />
+
+      {hasError && (
+        <Text
+          style={{
+            fontFamily: "MontserratAlternates_400Regular",
+            fontSize: 13,
+            color: "#F87171",
+            marginBottom: 16,
+          }}
+        >
+          Failed to add member. Please try again.
+        </Text>
+      )}
+
+      <View style={{ flexDirection: "row", gap: 12 }}>
+        <TouchableOpacity
+          onPress={onCancel}
+          activeOpacity={0.7}
+          style={{
+            flex: 1,
+            paddingVertical: 14,
+            borderRadius: 16,
+            backgroundColor: "rgba(255,255,255,0.08)",
+            alignItems: "center",
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: "MontserratAlternates_600SemiBold",
+              fontSize: 15,
+              color: "#A0A0A0",
+            }}
+          >
+            Cancel
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={onSubmit}
+          disabled={!name.trim() || isLoading}
+          activeOpacity={0.85}
+          style={{
+            flex: 1,
+            paddingVertical: 14,
+            borderRadius: 16,
+            backgroundColor: name.trim() && !isLoading ? "#D6EBEB" : "#494358",
+            alignItems: "center",
+          }}
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#262135" />
+          ) : (
+            <Text
+              style={{
+                fontFamily: "MontserratAlternates_700Bold",
+                fontSize: 15,
+                color: name.trim() ? "#262135" : "#6B7280",
+              }}
+            >
+              Add
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  </Modal>
+);
+
+// ─── Main screen ───────────────────────────────────────────────────────────────
+
 export default function WelcomeUserSelection() {
-  const [selectedUser, setSelectedUser] = useState(null);
   const [isModalVisible, setModalVisible] = useState(false);
   const [newMemberName, setNewMemberName] = useState("");
+  const [members, setMembers] = useState([]);
   const { selectedApp } = useLocalSearchParams();
 
-  // Push notifications
   const { registerAndStoreToken } = useRegisterPushNotifications();
-
-  // Get members from API
   const { data: membersData, isLoading, isError, refetch } = useGetFamilyMembers();
-
-  // Add member mutation
   const { mutate, isLoading: addingMember, isError: addMemberError } = useAddFamilyMember();
 
-  // Start with empty members array
-  const [members, setMembers] = useState([]);
+  useEffect(() => {
+    if (membersData?.data && Array.isArray(membersData.data)) {
+      setMembers(membersData.data);
+    } else {
+      setMembers([]);
+    }
+  }, [membersData, isLoading]);
 
   const handleUserSelect = async (userId) => {
-    setSelectedUser(userId);
-
     try {
-      // Store the selected user's token_key in Expo SecureStore
       const selectedUserData = members.find((user) => user.id === userId);
-      if (selectedUserData && selectedUserData.token_key) {
-        // Store the member's token_key for future API calls
+      if (selectedUserData?.token_key) {
         await SecureStore.setItemAsync("token_key", selectedUserData.token_key);
-        // Also store the member data for profile info
         await SecureStore.setItemAsync("member", JSON.stringify(selectedUserData));
-        // Store the selected app for future reference
         if (selectedApp) {
           await SecureStore.setItemAsync("selectedApp", selectedApp);
         }
-
-        // Register and store push notification token
         await registerAndStoreToken(selectedUserData.token_key);
 
-        // Navigate based on selected app
-        let route = "/(gfit)/home"; // Default fallback
-
-        switch (selectedApp) {
-          case "gfit":
-            route = "/(gfit)/home";
-            break;
-          case "gtkf":
-            route = "/(gtkf)/workouts";
-            break;
-          case "adults":
-            route = "/(adults)/home"; // Assuming this exists
-            break;
-          default:
-            route = "/(gfit)/home"; // Default fallback
-            break;
-        }
-
-        router.replace(route);
+        const routes = { gfit: "/(gfit)/home", gtkf: "/(gtkf)/workouts", adults: "/(adults)/home" };
+        router.replace(routes[selectedApp] ?? "/(gfit)/home");
       } else {
         showToast("error", "Error", "Failed to select user. Please try again.");
       }
-    } catch (error) {
+    } catch {
       showToast("error", "Error", "Failed to save user data. Please try again.");
     }
   };
 
   const handleAddMember = () => {
-    if (newMemberName.trim()) {
-      mutate(
-        { username: newMemberName },
-        {
-          onSuccess: () => {
-            setNewMemberName("");
-            setModalVisible(false);
-            showToast("success", "Member Added", "New member has been added successfully");
-            refetch(); // Refresh the member list
-          },
-          onError: (error) => {
-            showToast("error", "Error", error.response.data.message || "Failed to add member. Please try again.");
-            // Optionally show an error message to the user
-          },
-        }
-      );
-    }
+    if (!newMemberName.trim()) return;
+    mutate(
+      { username: newMemberName },
+      {
+        onSuccess: () => {
+          setNewMemberName("");
+          setModalVisible(false);
+          showToast("success", "Member Added", "New member has been added successfully");
+          refetch();
+        },
+        onError: (error) => {
+          showToast("error", "Error", error.response?.data?.message || "Failed to add member. Please try again.");
+        },
+      }
+    );
   };
 
-  useEffect(() => {
-    // Update members when API data is available
-    if (membersData?.data && Array.isArray(membersData.data)) {
-      setMembers(membersData.data);
-    } else {
-      // If no data or invalid data, keep empty array
-      setMembers([]);
-    }
-  }, [membersData, isLoading]);
+  const handleCloseModal = () => {
+    setNewMemberName("");
+    setModalVisible(false);
+  };
 
-  // Show loading state
+  // ── Loading state ────────────────────────────────────────────────────────────
+
   if (isLoading) {
     return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-white text-lg">Loading members...</Text>
+      <View style={{ flex: 1, backgroundColor: "#262135", justifyContent: "center", alignItems: "center" }}>
+        <StatusBar barStyle="light-content" />
+        <ActivityIndicator size="large" color="#D6EBEB" />
+        <Text
+          style={{
+            fontFamily: "MontserratAlternates_400Regular",
+            fontSize: 15,
+            color: "#A0A0A0",
+            marginTop: 16,
+          }}
+        >
+          Loading members…
+        </Text>
       </View>
     );
   }
 
-  // Show error state
+  // ── Error state ──────────────────────────────────────────────────────────────
+
   if (isError) {
     return (
-      <View className="flex-1 justify-center items-center bg-background">
-        <Text className="text-white text-lg mb-4">Error loading members</Text>
-        <TouchableOpacity onPress={() => refetch()} className="bg-blue-500 px-6 py-3 rounded-lg">
-          <Text className="text-white font-medium">Retry</Text>
+      <View style={{ flex: 1, backgroundColor: "#262135", justifyContent: "center", alignItems: "center", paddingHorizontal: 32 }}>
+        <StatusBar barStyle="light-content" />
+        <Ionicons name="cloud-offline-outline" size={48} color="#A0A0A0" style={{ marginBottom: 20 }} />
+        <Text
+          style={{
+            fontFamily: "MontserratAlternates_600SemiBold",
+            fontSize: 20,
+            color: "#FFFFFF",
+            marginBottom: 10,
+            textAlign: "center",
+          }}
+        >
+          Something went wrong
+        </Text>
+        <Text
+          style={{
+            fontFamily: "MontserratAlternates_400Regular",
+            fontSize: 15,
+            color: "#A0A0A0",
+            textAlign: "center",
+            marginBottom: 32,
+          }}
+        >
+          We couldn't load your family members.
+        </Text>
+        <TouchableOpacity
+          onPress={() => refetch()}
+          activeOpacity={0.85}
+          style={{
+            backgroundColor: "#D6EBEB",
+            paddingHorizontal: 32,
+            paddingVertical: 14,
+            borderRadius: 28,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: "MontserratAlternates_700Bold",
+              fontSize: 16,
+              color: "#262135",
+            }}
+          >
+            Try Again
+          </Text>
         </TouchableOpacity>
       </View>
     );
   }
 
+  // ── Main render ──────────────────────────────────────────────────────────────
+
   return (
-    <View className="flex-1 bg-background">
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <SafeAreaView className="flex-1">
-        <View className="flex-1 px-8">
-          {/* Title */}
-          <View className="mt-16 mb-8">
+    <View style={{ flex: 1, backgroundColor: "#262135" }}>
+      <StatusBar barStyle="light-content" />
+      <SafeAreaView style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={{ paddingTop: 48, marginBottom: 36 }}>
             <Text
-              style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-              className="text-white text-5xl font-bold mb-4"
+              style={{
+                fontFamily: "MontserratAlternates_400Regular",
+                fontSize: 14,
+                color: "#A0A0A0",
+                marginBottom: 10,
+                letterSpacing: 0.3,
+              }}
             >
-              Welcome!
+              Step 2 of 2
             </Text>
             <Text
-              className="text-gray-400 text-base text-center"
-              style={{ fontFamily: "MontserratAlternates_400Regular" }}
+              style={{
+                fontFamily: "MontserratAlternates_700Bold",
+                fontSize: 32,
+                color: "#FFFFFF",
+                lineHeight: 42,
+                marginBottom: 8,
+              }}
             >
-              Select a family member to continue
+              Who's playing{"\n"}today?
+            </Text>
+            <Text
+              style={{
+                fontFamily: "MontserratAlternates_400Regular",
+                fontSize: 15,
+                color: "#A0A0A0",
+              }}
+            >
+              Tap your name to jump in.
             </Text>
           </View>
 
-          {/* User Grid */}
-          <View className="flex-1 justify-center">
-            {members && Array.isArray(members) && members.length > 0 ? (
-              <View className="px-4">
-                {/* Calculate how many rows we need (members + 1 add button) */}
-                {Array.from({ length: Math.ceil((members.length + 1) / 2) }).map((_, rowIndex) => (
-                  <View key={rowIndex} className="flex-row justify-between mb-6 gap-x-2">
-                    {/* First column */}
-                    {members[rowIndex * 2] ? (
-                      <TouchableOpacity
-                        key={members[rowIndex * 2].id}
-                        onPress={() => handleUserSelect(members[rowIndex * 2].id)}
-                        className="rounded-3xl items-center justify-center"
-                        style={{
-                          backgroundColor: members[rowIndex * 2].color || "#6B7280",
-                          width: "47%",
-                          height: 160,
-                        }}
-                      >
-                        <View className="items-center">
-                          <View
-                            className="w-16 h-16 rounded-full border-2 items-center justify-center mb-4"
-                            style={{
-                              borderColor: members[rowIndex * 2].textColor || "#FFFFFF",
-                            }}
-                          >
-                            <Ionicons
-                              name="person-outline"
-                              size={32}
-                              color={members[rowIndex * 2].textColor || "#FFFFFF"}
-                            />
-                          </View>
-                          <Text
-                            className="text-md font-medium text-center"
-                            style={{
-                              color: members[rowIndex * 2].textColor || "#FFFFFF",
-                              fontFamily: "MontserratAlternates_600SemiBold",
-                            }}
-                          >
-                            {members[rowIndex * 2].username || "User"}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    ) : (
-                      // Show "Add Member" button in first column if no member
-                      <TouchableOpacity
-                        onPress={() => setModalVisible(true)}
-                        className="rounded-3xl items-center justify-center border-2 border-white/30"
-                        style={{
-                          backgroundColor: "rgba(255, 255, 255, 0.1)",
-                          width: "47%",
-                          height: 160,
-                        }}
-                      >
-                        <View className="items-center">
-                          <View
-                            className="w-16 h-16 rounded-full border-2 items-center justify-center mb-4"
-                            style={{ borderColor: "rgba(255, 255, 255, 0.5)" }}
-                          >
-                            <Ionicons name="add" size={32} color="rgba(255, 255, 255, 0.8)" />
-                          </View>
-                          <Text
-                            className="text-md font-medium text-center"
-                            style={{
-                              color: "rgba(255, 255, 255, 0.8)",
-                              fontFamily: "MontserratAlternates_600SemiBold",
-                            }}
-                          >
-                            Add Member
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    )}
-
-                    {/* Second column */}
-                    {members[rowIndex * 2 + 1] ? (
-                      <TouchableOpacity
-                        key={members[rowIndex * 2 + 1].id}
-                        onPress={() => handleUserSelect(members[rowIndex * 2 + 1].id)}
-                        className="rounded-3xl items-center justify-center"
-                        style={{
-                          backgroundColor: members[rowIndex * 2 + 1].color || "#6B7280",
-                          width: "47%",
-                          height: 160,
-                        }}
-                      >
-                        <View className="items-center">
-                          <View
-                            className="w-16 h-16 rounded-full border-2 items-center justify-center mb-4"
-                            style={{
-                              borderColor: members[rowIndex * 2 + 1].textColor || "#FFFFFF",
-                            }}
-                          >
-                            <Ionicons
-                              name="person-outline"
-                              size={32}
-                              color={members[rowIndex * 2 + 1].textColor || "#FFFFFF"}
-                            />
-                          </View>
-                          <Text
-                            className="text-md font-medium text-center"
-                            style={{
-                              color: members[rowIndex * 2 + 1].textColor || "#FFFFFF",
-                              fontFamily: "MontserratAlternates_600SemiBold",
-                            }}
-                          >
-                            {members[rowIndex * 2 + 1].username || "User"}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    ) : rowIndex * 2 + 1 === members.length ? (
-                      // Show "Add Member" button in second column if this is the spot after the last member
-                      <TouchableOpacity
-                        onPress={() => setModalVisible(true)}
-                        className="rounded-3xl items-center justify-center border-2 border-white/30"
-                        style={{
-                          backgroundColor: "rgba(255, 255, 255, 0.1)",
-                          width: "47%",
-                          height: 160,
-                        }}
-                      >
-                        <View className="items-center">
-                          <View
-                            className="w-16 h-16 rounded-full border-2 items-center justify-center mb-4"
-                            style={{ borderColor: "rgba(255, 255, 255, 0.5)" }}
-                          >
-                            <Ionicons name="add" size={32} color="rgba(255, 255, 255, 0.8)" />
-                          </View>
-                          <Text
-                            className="text-md font-medium text-center"
-                            style={{
-                              color: "rgba(255, 255, 255, 0.8)",
-                              fontFamily: "MontserratAlternates_600SemiBold",
-                            }}
-                          >
-                            Add Member
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={{ width: "47%" }} />
-                    )}
-                  </View>
-                ))}
-              </View>
-            ) : (
-              // Show "Add First Member" when no members exist
-              <View className="items-center px-8">
-                <Text
-                  className="text-white text-2xl mb-6 text-center"
-                  style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-                >
-                  No family members yet
-                </Text>
-                <Text
-                  className="text-gray-400 text-base mb-8 text-center leading-6"
-                  style={{ fontFamily: "MontserratAlternates_400Regular" }}
-                >
-                  Add your first family member to get started with personalized fitness tracking
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setModalVisible(true)}
-                  className="rounded-3xl items-center justify-center border-2 border-white/30"
-                  style={{
-                    backgroundColor: "rgba(255, 255, 255, 0.1)",
-                    width: 200,
-                    height: 160,
-                  }}
-                >
-                  <View className="items-center">
-                    <View
-                      className="w-16 h-16 rounded-full border-2 items-center justify-center mb-4"
-                      style={{ borderColor: "rgba(255, 255, 255, 0.5)" }}
-                    >
-                      <Ionicons name="add" size={32} color="rgba(255, 255, 255, 0.8)" />
-                    </View>
-                    <Text
-                      className="text-md font-medium text-center"
-                      style={{
-                        color: "rgba(255, 255, 255, 0.8)",
-                        fontFamily: "MontserratAlternates_600SemiBold",
-                      }}
-                    >
-                      Add First Member
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Add Member Modal */}
-        <Modal isVisible={isModalVisible} onBackdropPress={() => setModalVisible(false)}>
-          <View className="bg-buttonPrimary rounded-lg p-6 m-4">
-            <Text
-              className="text-xl text-buttonSecondary font-bold mb-4"
-              style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-            >
-              Add New Member
-            </Text>
-            <TextInput
-              className="border border-buttonSecondary rounded-lg p-2 mb-4"
-              placeholder="Enter member's name"
-              value={newMemberName}
-              onChangeText={setNewMemberName}
-              style={{ fontFamily: "MontserratAlternates_400Regular" }}
+          {/* Grid or empty state */}
+          {members.length > 0 ? (
+            <MemberGrid
+              members={members}
+              onSelectUser={handleUserSelect}
+              onAddMember={() => setModalVisible(true)}
             />
-            {addMemberError && (
-              <Text style={{ fontFamily: "MontserratAlternates_400Regular" }} className="text-gtkfText mb-4 ">
-                Error adding member.
-              </Text>
-            )}
-            <View className="flex-row justify-end gap-x-4">
-              <TouchableOpacity
-                onPress={() => {
-                  setNewMemberName("");
-                  setModalVisible(false);
-                }}
-                className="bg-gray-300 px-4 py-2 rounded-lg"
-              >
-                <Text className="text-black font-medium" style={{ fontFamily: "MontserratAlternates_600SemiBold" }}>
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleAddMember}
-                className={`px-4 py-2 rounded-lg ${
-                  newMemberName.trim() && !addingMember ? "bg-buttonSecondary" : "bg-gray-300"
-                }`}
-                disabled={!newMemberName.trim() || addingMember}
-              >
-                <Text className="text-white font-medium" style={{ fontFamily: "MontserratAlternates_600SemiBold" }}>
-                  {addingMember ? "Adding..." : "Add"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+          ) : (
+            <EmptyState onAdd={() => setModalVisible(true)} />
+          )}
+        </ScrollView>
       </SafeAreaView>
+
+      {/* Add Member Modal */}
+      <AddMemberModal
+        visible={isModalVisible}
+        name={newMemberName}
+        onChangeName={setNewMemberName}
+        onSubmit={handleAddMember}
+        onCancel={handleCloseModal}
+        isLoading={addingMember}
+        hasError={addMemberError}
+      />
     </View>
   );
 }

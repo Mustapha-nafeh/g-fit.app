@@ -337,52 +337,50 @@ export default function ChallengeLeaderboard() {
                 </View>
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: "MontserratAlternates_600SemiBold", color: "#fff", fontSize: 22 }}>
+                <Text style={{ fontFamily: "MontserratAlternates_700Bold", color: "#fff", fontSize: 22 }}>
                   Leaderboard
                 </Text>
               </View>
-              <TouchableOpacity
-                onPress={() => router.push("/(gfit)/challenges")}
-                activeOpacity={0.75}
-                style={{ marginRight: 10 }}
-              >
-                <LinearGradient
-                  colors={["#F59E0B", "#F97316"]}
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 12,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    shadowColor: "#F59E0B",
-                    shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 4.65,
-                  }}
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TouchableOpacity onPress={() => router.push("/(gfit)/challenges")} activeOpacity={0.75}>
+                  <LinearGradient
+                    colors={["#F59E0B", "#F97316"]}
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 12,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      shadowColor: "#F59E0B",
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 4.65,
+                    }}
+                  >
+                    <Ionicons name="trophy" size={18} color="white" />
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={loadActiveChallenge}
+                  activeOpacity={0.75}
+                  disabled={getActiveChallengemutation.isPending || getFamiliesLeaderboardMutation.isPending}
                 >
-                  <Ionicons name="trophy" size={17} color="white" />
-                </LinearGradient>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={loadActiveChallenge}
-                activeOpacity={0.75}
-                disabled={getActiveChallengemutation.isPending || getFamiliesLeaderboardMutation.isPending}
-              >
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    backgroundColor: "rgba(6,182,212,0.1)",
-                    borderWidth: 1,
-                    borderColor: "rgba(6,182,212,0.2)",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="refresh" size={17} color="#06B6D4" />
-                </View>
-              </TouchableOpacity>
+                  <View
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 12,
+                      backgroundColor: "rgba(255,255,255,0.07)",
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.08)",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons name="refresh" size={18} color="#fff" />
+                  </View>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
@@ -548,7 +546,7 @@ export default function ChallengeLeaderboard() {
                   borderColor: "rgba(255,255,255,0.07)",
                   borderRadius: 20,
                   padding: 18,
-                  marginBottom: 20,
+                  marginBottom: 80,
                 }}
               >
                 <SectionHeader title="Your Family Progress" icon="pulse-outline" color="#8B5CF6" />
@@ -639,7 +637,7 @@ export default function ChallengeLeaderboard() {
 
             {activeChallenge && (
               <>
-                <View
+                {/* <View
                   style={{
                     flexDirection: "row",
                     backgroundColor: "rgba(255,255,255,0.04)",
@@ -698,7 +696,7 @@ export default function ChallengeLeaderboard() {
                       )}
                     </TouchableOpacity>
                   ))}
-                </View>
+                </View> */}
 
                 <View style={{ marginBottom: 20 }}>
                   <SectionHeader title="Family Members" icon="person-outline" color="#06B6D4" />

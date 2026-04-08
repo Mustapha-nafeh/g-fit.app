@@ -1,178 +1,209 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StatusBar, Image } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+
+const APP_OPTIONS = [
+  {
+    id: "gfit",
+    title: "G-Fit",
+    subtitle: "Family steps competitions, leaderboards, and XP challenges.",
+    image: require("../../assets/G-FIT-3.png"),
+    tag: null,
+  },
+  {
+    id: "gtkf",
+    title: "Kids Kit",
+    subtitle: "Fitness and wellness programs built for kids.",
+    image: require("../../assets/getthekidsfit.png"),
+    tag: null,
+  },
+];
+
+// ─── App option card ───────────────────────────────────────────────────────────
+
+const AppCard = ({ app, selected, onPress }) => (
+  <TouchableOpacity
+    onPress={() => onPress(app.id)}
+    activeOpacity={0.8}
+    style={{
+      flexDirection: "row",
+      alignItems: "center",
+      padding: 20,
+      borderRadius: 20,
+      marginBottom: 14,
+      backgroundColor: selected ? "rgba(214,235,235,0.07)" : "#3A2D6E",
+      borderWidth: 1.5,
+      borderColor: selected ? "#D6EBEB" : "rgba(255,255,255,0.06)",
+    }}
+  >
+    {/* Image thumbnail */}
+    <View
+      style={{
+        width: 72,
+        height: 72,
+        borderRadius: 16,
+        backgroundColor: "#ffffff",
+        justifyContent: "center",
+        alignItems: "center",
+        marginRight: 18,
+        overflow: "hidden",
+      }}
+    >
+      <Image source={app.image} style={{ width: 56, height: 56, resizeMode: "contain" }} />
+    </View>
+
+    {/* Text */}
+    <View style={{ flex: 1 }}>
+      {app.tag && (
+        <View
+          style={{
+            alignSelf: "flex-start",
+            paddingHorizontal: 10,
+            paddingVertical: 3,
+            backgroundColor: "rgba(246,243,186,0.15)",
+            borderRadius: 10,
+            marginBottom: 6,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: "MontserratAlternates_600SemiBold",
+              fontSize: 10,
+              color: "#F6F3BA",
+              letterSpacing: 0.4,
+            }}
+          >
+            {app.tag.toUpperCase()}
+          </Text>
+        </View>
+      )}
+      <Text
+        style={{
+          fontFamily: "MontserratAlternates_700Bold",
+          fontSize: 18,
+          color: "#FFFFFF",
+          marginBottom: 4,
+        }}
+      >
+        {app.title}
+      </Text>
+      <Text
+        style={{
+          fontFamily: "MontserratAlternates_400Regular",
+          fontSize: 13,
+          color: "#A0A0A0",
+          lineHeight: 19,
+        }}
+      >
+        {app.subtitle}
+      </Text>
+    </View>
+
+    {/* Selection indicator */}
+    <View
+      style={{
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: selected ? "#D6EBEB" : "transparent",
+        borderWidth: 1.5,
+        borderColor: selected ? "#D6EBEB" : "#494358",
+        justifyContent: "center",
+        alignItems: "center",
+        marginLeft: 14,
+      }}
+    >
+      {selected && <Ionicons name="checkmark" size={14} color="#262135" />}
+    </View>
+  </TouchableOpacity>
+);
+
+// ─── Main screen ───────────────────────────────────────────────────────────────
 
 const AppSelectionScreen = () => {
   const [selectedApp, setSelectedApp] = useState(null);
 
-  const handleAppSelect = (appType) => {
-    setSelectedApp(appType);
+  const handleAppSelect = (appId) => {
+    setSelectedApp(appId);
   };
 
   const handleGetStarted = () => {
     if (!selectedApp) return;
-    router.push({ pathname: "(selection)/select-user", params: { selectedApp: selectedApp } });
+    router.push({ pathname: "(selection)/select-user", params: { selectedApp } });
   };
 
+  // Guest mode — logic preserved, re-enable the button below if needed
   const handleVisitAsGuest = () => {
     if (!selectedApp) return;
-
-    // Navigate directly to the app without user selection for guest mode
-    let route = "/(gfit)/home"; // Default fallback
-
-    switch (selectedApp) {
-      case "gfit":
-        route = "/(gfit)/home";
-        break;
-      case "gtkf":
-        route = "/(gtkf)/workouts";
-        break;
-      case "adults":
-        route = "/(adults)/home"; // Assuming this exists
-        break;
-      default:
-        route = "/(gfit)/home"; // Default fallback
-        break;
-    }
-
-    router.replace(route);
+    const routes = { gfit: "/(gfit)/home", gtkf: "/(gtkf)/workouts", adults: "/(adults)/home" };
+    router.replace(routes[selectedApp] ?? "/(gfit)/home");
   };
-
-  const appOptions = [
-    {
-      id: "gfit",
-      title: "G-Fit",
-      subtitle: "Families Steps competitions.",
-      backgroundColor: "bg-gray-300",
-      image: require("../../assets/G-FIT 3.png"),
-    },
-    // {
-    //   id: "adults",
-    //   title: "Adults kit",
-    //   subtitle: "Adults fitness and wellness",
-    //   backgroundColor: "bg-gray-300",
-    //   placeholder: "ADULT",
-    // },
-    {
-      id: "gtkf",
-      title: "Kids Kit",
-      subtitle: "Kids fitness and wellness",
-      backgroundColor: "bg-gray-300",
-      placeholder: "KIDS",
-      image: require("../../assets/getthekidsfit.png"),
-    },
-  ];
 
   return (
     <>
       <StatusBar barStyle="light-content" />
-      <View className="flex-1   bg-background px-6 pt-20">
-        {/* Header with Back Button */}
-        {/* <View className="flex-row items-center mb-8">
-          <TouchableOpacity
-            onPress={handleBack}
-            className="w-12 h-12 rounded-2xl border border-gray-400 justify-center items-center"
-          >
-            <Ionicons name="chevron-back" size={24} color="white" />
-          </TouchableOpacity>
-        </View> */}
+      <View style={{ flex: 1, backgroundColor: "#262135", paddingHorizontal: 24 }}>
+        {/* Background decoration */}
+        <Image source={require("../../assets/Ellipse1.png")} style={{ position: "absolute", top: 0, left: 0 }} />
 
-        {/* Title Section */}
-        <View className="mb-12">
-          {/* <Text
-            style={{ fontFamily: "MontserratAlternates_700Bold" }}
-            className="text-white text-4xl leading-tight mb-4"
+        {/* Header */}
+        <View style={{ paddingTop: 80, marginBottom: 40 }}>
+          <Text
+            style={{
+              fontFamily: "MontserratAlternates_400Regular",
+              fontSize: 14,
+              color: "#A0A0A0",
+              marginBottom: 10,
+              letterSpacing: 0.3,
+            }}
           >
-            Levels.
-          </Text> */}
-          <Text style={{ fontFamily: "MontserratAlternates_700Bold" }} className="text-white text-2xl">
-            Please choose{"\n"}your app.
+            Step 1 of 2
+          </Text>
+          <Text
+            style={{
+              fontFamily: "MontserratAlternates_700Bold",
+              fontSize: 32,
+              color: "#FFFFFF",
+              lineHeight: 42,
+            }}
+          >
+            Choose your{"\n"}experience.
           </Text>
         </View>
 
-        {/* App Options */}
-        <View className="flex-1 mb-8">
-          {appOptions.map((app, index) => (
-            <TouchableOpacity
-              key={app.id}
-              onPress={() => handleAppSelect(app.id)}
-              className={`flex-row items-center p-4 rounded-2xl mb-4 ${
-                selectedApp === app.id ? "bg-gray-600" : "bg-gray-700/30"
-              }`}
-              activeOpacity={0.7}
-            >
-              {/* App Icon/Placeholder */}
-              <View className={`w-16 h-16 rounded-2xl justify-center items-center mr-4 ${app.backgroundColor}`}>
-                {app.icon || app.image ? (
-                  app.image ? (
-                    <Image source={app.image} className="w-12 h-12" style={{ resizeMode: "contain" }} />
-                  ) : (
-                    <View className="w-12 h-12 rounded-full border-2 border-gray-400 justify-center items-center">
-                      <Ionicons name={app.icon} size={20} color="white" />
-                    </View>
-                  )
-                ) : (
-                  <View className="justify-center items-center">
-                    <Text
-                      style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-                      className="text-gray-800 text-xs text-center"
-                    >
-                      {app.placeholder}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* App Info */}
-              <View className="flex-1">
-                <Text style={{ fontFamily: "MontserratAlternates_600SemiBold" }} className="text-white text-lg mb-1">
-                  {app.title}
-                </Text>
-                <Text style={{ fontFamily: "MontserratAlternates_400Regular" }} className="text-gray-300 text-sm">
-                  {app.subtitle}
-                </Text>
-              </View>
-
-              {/* Selection Indicator */}
-              {selectedApp === app.id && (
-                <View className="w-6 h-6 bg-yellow-300 rounded-full justify-center items-center">
-                  <Ionicons name="checkmark" size={16} color="#374151" />
-                </View>
-              )}
-            </TouchableOpacity>
+        {/* App cards */}
+        <View style={{ flex: 1 }}>
+          {APP_OPTIONS.map((app) => (
+            <AppCard key={app.id} app={app} selected={selectedApp === app.id} onPress={handleAppSelect} />
           ))}
         </View>
 
-        {/* Get Started Button */}
-        <TouchableOpacity
-          onPress={handleGetStarted}
-          className={`w-full py-3 px-6 rounded-2xl mb-8 ${selectedApp ? "bg-gray-200 active:bg-white" : "bg-gray-600"}`}
-          disabled={!selectedApp}
-        >
-          <Text
-            style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-            className={`text-center text-lg ${selectedApp ? "text-gray-800" : "text-gray-400"}`}
+        {/* CTA */}
+        <View style={{ paddingBottom: 52, gap: 12 }}>
+          <TouchableOpacity
+            onPress={handleGetStarted}
+            disabled={!selectedApp}
+            activeOpacity={0.85}
+            style={{
+              width: "100%",
+              backgroundColor: selectedApp ? "#D6EBEB" : "#494358",
+              paddingVertical: 17,
+              borderRadius: 28,
+              alignItems: "center",
+            }}
           >
-            Get Started
-          </Text>
-        </TouchableOpacity>
-
-        {/* <TouchableOpacity
-          onPress={handleVisitAsGuest}
-          className={`w-full py-3 px-6 rounded-2xl  ${
-            selectedApp ? "bg-buttonSecondary" : "bg-gray-600"
-          } border-white`}
-          disabled={!selectedApp}
-        >
-          <Text
-            style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-            className={`text-center text-lg ${selectedApp ? "text-white" : "text-gray-400"}`}
-          >
-            Visit as a guest
-          </Text>
-        </TouchableOpacity> */}
+            <Text
+              style={{
+                fontFamily: "MontserratAlternates_700Bold",
+                fontSize: 17,
+                color: selectedApp ? "#262135" : "#6B7280",
+              }}
+            >
+              Continue
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </>
   );

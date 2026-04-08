@@ -1,109 +1,201 @@
-// src/hooks/useIAP.js
-
-import { useEffect, useState, useCallback } from "react";
-import { Platform, Alert } from "react-native";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Platform } from "react-native";
 import {
   initConnection,
   endConnection,
-  getSubscriptions,
-  requestSubscription,
+  fetchProducts,
+  getAvailablePurchases,
+  getTransactionJwsIOS,
+  requestPurchase,
   purchaseUpdatedListener,
   purchaseErrorListener,
   finishTransaction,
-  getAvailablePurchases,
 } from "react-native-iap";
-import { PRODUCT_IDS, SUBSCRIPTION_ID } from "../utils/iap";
-import { useVerifyPurchase } from "../api/iapApi";
+import { SUBSCRIPTION_ID, PRODUCT_IDS } from "../utils/iap";
+import { verifyPurchaseApi } from "../api/iapApi";
+import { useGlobalContext } from "../context/GlobalContext";
 
-const productIds = Platform.select(PRODUCT_IDS);
+export const PURCHASE_STATE = {
+  IDLE: "idle",
+  REQUESTING: "requesting",
+  PROCESSING: "processing",
+  VERIFYING: "verifying",
+  SUCCESS: "success",
+  ERROR: "error",
+};
+
+// ─── Platform-specific helpers ───────────────────────────────────────────────
+
+async function buildVerifyPayload(purchase) {
+  if (Platform.OS === "ios") {
+    let jwsRepresentation = null;
+    try {
+      jwsRepresentation = await getTransactionJwsIOS(purchase.transactionId);
+    } catch (err) {
+      console.warn("[IAP] Could not fetch JWS:", err);
+    }
+    return {
+      store: "apple",
+      productId: purchase.productId,
+      transactionId: purchase.transactionId,
+      jwsRepresentation,
+    };
+  }
+  // Android
+  return {
+    store: "google",
+    productId: purchase.productId,
+    transactionId: purchase.transactionId,
+    purchaseToken: purchase.purchaseToken,
+    packageNameAndroid: purchase.packageNameAndroid,
+  };
+}
+
+function buildPurchaseRequest() {
+  return {
+    request: {
+      apple: { sku: SUBSCRIPTION_ID },
+      // TODO: Android
+      // google: { skus: [SUBSCRIPTION_ID] },
+    },
+    type: "subs",
+  };
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useIAP() {
-  const [subscription, setSubscription] = useState(null);
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [{ mutate: verifyPurchase }] = useVerifyPurchase();
+  const { fetchProfile } = useGlobalContext();
+  const [purchaseState, setPurchaseState] = useState(PURCHASE_STATE.IDLE);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [productInfo, setProductInfo] = useState(null);
+  const [isProductLoading, setIsProductLoading] = useState(true);
+  const purchaseUpdateSub = useRef(null);
+  const purchaseErrorSub = useRef(null);
+  const mounted = useRef(true);
 
   useEffect(() => {
-    let purchaseUpdateSub;
-    let purchaseErrorSub;
+    mounted.current = true;
 
     const init = async () => {
       try {
         await initConnection();
 
-        // Fetch the subscription product
-        const subs = await getSubscriptions({ skus: productIds });
-        if (subs.length > 0) setSubscription(subs[0]);
+        purchaseUpdateSub.current = purchaseUpdatedListener(async (purchase) => {
+          if (!purchase?.transactionId) return;
 
-        // Check if user already has an active subscription
-        await checkExistingPurchases();
-
-        // Listen for purchase completions
-        purchaseUpdateSub = purchaseUpdatedListener(async (purchase) => {
           try {
+            if (mounted.current) setPurchaseState(PURCHASE_STATE.PROCESSING);
             await finishTransaction({ purchase, isConsumable: false });
-            setIsSubscribed(true);
 
-            // send to your backend for validation
-            await verifyPurchase(purchase);
+            if (mounted.current) setPurchaseState(PURCHASE_STATE.VERIFYING);
+            const payload = await buildVerifyPayload(purchase);
+            await verifyPurchaseApi(payload);
+
+            await fetchProfile();
+            if (mounted.current) setPurchaseState(PURCHASE_STATE.SUCCESS);
           } catch (err) {
-            console.error("Purchase error", err);
+            if (err?.response?.status === 404) {
+              console.warn("[IAP] Already processed, rechecking profile.");
+              await fetchProfile();
+              if (mounted.current) setPurchaseState(PURCHASE_STATE.IDLE);
+              return;
+            }
+            console.error("[IAP] Transaction failed:", err);
+            if (mounted.current) {
+              setErrorMessage("Purchase completed but verification failed. Please contact support.");
+              setPurchaseState(PURCHASE_STATE.ERROR);
+            }
           }
         });
 
-        purchaseErrorSub = purchaseErrorListener((err) => {
-          if (err.code !== "E_USER_CANCELLED") {
-            setError(err.message);
-            Alert.alert("Purchase Error", err.message);
+        purchaseErrorSub.current = purchaseErrorListener(async (err) => {
+          if (err.code === "E_USER_CANCELLED") {
+            if (mounted.current) setPurchaseState(PURCHASE_STATE.IDLE);
+            return;
+          }
+          if (!err.productId && err.code === "sku-not-found") {
+            console.warn("[IAP] Ignoring ghost sku-not-found error from sandbox.");
+            return;
+          }
+          if (err.message?.includes("Duplicate purchase update skipped")) {
+            console.warn("[IAP] Duplicate purchase, rechecking profile.");
+            await fetchProfile();
+            if (mounted.current) setPurchaseState(PURCHASE_STATE.IDLE);
+            return;
+          }
+          console.error("[IAP] Purchase error:", err);
+          if (mounted.current) {
+            setErrorMessage(err.message || "Purchase failed. Please try again.");
+            setPurchaseState(PURCHASE_STATE.ERROR);
           }
         });
+
+        const [subs, available] = await Promise.allSettled([
+          fetchProducts({ skus: PRODUCT_IDS, type: "subs" }),
+          getAvailablePurchases(),
+        ]);
+
+        if (subs.status === "fulfilled" && subs.value?.length > 0) {
+          if (mounted.current) setProductInfo(subs.value[0]);
+        } else if (subs.status === "rejected") {
+          console.warn("[IAP] Could not fetch product info:", subs.reason);
+        }
+        if (mounted.current) setIsProductLoading(false);
+
+        if (available.status === "fulfilled") {
+          for (const purchase of available.value) {
+            await finishTransaction({ purchase, isConsumable: false });
+          }
+        } else {
+          console.warn("[IAP] Could not drain pending transactions:", available.reason);
+        }
       } catch (err) {
-        console.error("IAP init error", err);
-        setError(err.message);
+        console.error("[IAP] Init failed:", err);
       }
     };
 
     init();
 
     return () => {
-      purchaseUpdateSub?.remove();
-      purchaseErrorSub?.remove();
+      mounted.current = false;
+      purchaseUpdateSub.current?.remove();
+      purchaseErrorSub.current?.remove();
       endConnection();
     };
   }, []);
 
-  const checkExistingPurchases = async () => {
-    try {
-      const purchases = await getAvailablePurchases();
-      const active = purchases.find((p) => p.productId === SUBSCRIPTION_ID);
-      setIsSubscribed(!!active);
-    } catch (err) {
-      console.error("Could not check purchases", err);
-    }
-  };
-
   const subscribe = useCallback(async () => {
-    if (!subscription) return;
-    setLoading(true);
-    setError(null);
+    setErrorMessage(null);
+    setPurchaseState(PURCHASE_STATE.REQUESTING);
     try {
-      await requestSubscription({ sku: subscription.productId });
+      await requestPurchase(buildPurchaseRequest());
     } catch (err) {
-      if (err.code !== "E_USER_CANCELLED") {
-        setError(err.message);
+      if (err.code === "E_USER_CANCELLED") {
+        setPurchaseState(PURCHASE_STATE.IDLE);
+        return;
       }
-    } finally {
-      setLoading(false);
+      console.error("[IAP] requestPurchase failed:", err);
+      setErrorMessage(err.message || "Could not initiate purchase. Please try again.");
+      setPurchaseState(PURCHASE_STATE.ERROR);
     }
-  }, [subscription]);
+  }, []);
+
+  const resetError = useCallback(() => {
+    setErrorMessage(null);
+    setPurchaseState(PURCHASE_STATE.IDLE);
+  }, []);
 
   return {
-    subscription,
-    isSubscribed,
-    loading,
-    error,
+    purchaseState,
+    errorMessage,
+    productInfo,
+    isProductLoading,
     subscribe,
-    checkExistingPurchases,
+    resetError,
+    isLoading:
+      purchaseState === PURCHASE_STATE.REQUESTING ||
+      purchaseState === PURCHASE_STATE.PROCESSING ||
+      purchaseState === PURCHASE_STATE.VERIFYING,
   };
 }

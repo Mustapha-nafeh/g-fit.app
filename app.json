@@ -5,11 +5,11 @@
     "scheme": "GTKF",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon appstore bg.png",
+    "icon": "./assets/icon-appstore-bg.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/G-FIT 2.png",
+      "image": "./assets/G-FIT-2.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -23,7 +23,7 @@
         "NSMotionUsageDescription": "G-fit uses your device's motion sensors to count your steps and track your daily activity."
       },
       "splash": {
-        "image": "./assets/G-FIT 2.png",
+        "image": "./assets/G-FIT-2.png",
         "resizeMode": "contain",
         "backgroundColor": "#ffffff"
       }
@@ -47,7 +47,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/G-FIT 2.png",
+          "icon": "./assets/G-FIT-2.png",
           "color": "#ffffff"
         }
       ],

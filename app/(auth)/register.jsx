@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Image,
+  ActivityIndicator,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
@@ -24,11 +25,14 @@ const RegisterScreen = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { data, isLoading, isError, mutate } = useRegister();
+  const { mutate } = useRegister();
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const validatePassword = (confirm) => {
-    if (confirm !== password) {
+  const validatePassword = (newPassword, newConfirm) => {
+    if (newConfirm === "") {
+      setError("");
+    } else if (newPassword !== newConfirm) {
       setError("Passwords do not match");
     } else {
       setError("");
@@ -36,19 +40,18 @@ const RegisterScreen = () => {
   };
 
   const handleRegister = (familyName, email, password) => {
+    setIsLoading(true);
     mutate(
       { family_name: familyName, email, password },
       {
         onSuccess: (data) => {
           showToast("success", "Registration Successful", "You have registered successfully!");
-
-          // Extract the actual token string from the object
           const tokenKey = data.data.token_key;
           securestore.setItemAsync("token_key", tokenKey);
-
           router.replace("/(auth)/otp");
         },
         onError: (error) => {
+          setIsLoading(false);
           showToast("error", "Registration Failed", error.response?.data?.message || "An error occurred");
         },
       }
@@ -66,11 +69,7 @@ const RegisterScreen = () => {
   return (
     <>
       <StatusBar barStyle="light-content" />
-      <KeyboardAvoidingView
-        className="flex-1 bg-background"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
-      >
+      <KeyboardAvoidingView className="flex-1 bg-background" behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ flexGrow: 1 }}
@@ -92,11 +91,12 @@ const RegisterScreen = () => {
 
             {/* Content Container */}
             <View className="flex-1 justify-center min-h-[600px]">
-              {/* Footprint Icon */}
+              {/* Logo */}
               <View className="items-center mb-8">
-                <View className="w-16 h-16 rounded-full border-2 border-gray-400 justify-center items-center">
-                  <Ionicons name="footsteps" size={28} color="white" />
-                </View>
+                <Image
+                  source={require("../../assets/G-FIT-white.png")}
+                  style={{ width: 80, height: 80, resizeMode: "contain" }}
+                />
               </View>
 
               {/* Welcome Text */}
@@ -123,6 +123,8 @@ const RegisterScreen = () => {
                   style={{ fontFamily: "MontserratAlternates_400Regular" }}
                   className="w-full bg-gray-700/50 text-white pb-2 h-14 px-6 rounded-2xl mb-4 text-base"
                   autoCapitalize="words"
+                  autoCorrect={false}
+                  textContentType="familyName"
                 />
 
                 {/* Email Input */}
@@ -131,22 +133,46 @@ const RegisterScreen = () => {
                   onChangeText={setEmail}
                   placeholder="Email"
                   placeholderTextColor="#9CA3AF"
-                  style={{ fontFamily: "MontserratAlternates_400Regular" }}
-                  className="w-full bg-gray-700/50 text-white pb-2 h-14  px-6 rounded-2xl mb-4 text-base"
+                  style={{
+                    fontFamily: "MontserratAlternates_400Regular",
+                    width: "100%",
+                    backgroundColor: "rgba(55,65,81,0.5)",
+                    color: "#fff",
+                    height: 56,
+                    paddingHorizontal: 24,
+                    borderRadius: 16,
+                    marginBottom: 16,
+                    fontSize: 16,
+                  }}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  spellCheck={false}
+                  textContentType="emailAddress"
+                  autoComplete="email"
+                  multiline={false}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
                 />
 
                 {/* Password Input */}
                 <View className="relative mb-4">
                   <TextInput
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                      setPassword(text);
+                      validatePassword(text, confirmPassword);
+                    }}
                     placeholder="Password"
                     placeholderTextColor="#9CA3AF"
                     style={{ fontFamily: "MontserratAlternates_400Regular" }}
                     className="w-full bg-gray-700/50 text-white pb-2 h-14 px-6 pr-12 rounded-2xl text-base"
                     secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    spellCheck={false}
+                    textContentType="newPassword"
+                    autoComplete="password-new"
                   />
                   <TouchableOpacity onPress={() => setShowPassword(!showPassword)} className="absolute right-4 top-4">
                     <Ionicons name={showPassword ? "eye-off" : "eye"} size={20} color="#9CA3AF" />
@@ -159,13 +185,18 @@ const RegisterScreen = () => {
                     value={confirmPassword}
                     onChangeText={(text) => {
                       setConfirmPassword(text);
-                      validatePassword(text);
+                      validatePassword(password, text);
                     }}
                     placeholder="Confirm password"
                     placeholderTextColor="#9CA3AF"
                     style={{ fontFamily: "MontserratAlternates_400Regular" }}
                     className="w-full bg-gray-700/50 text-white pb-2 h-14 px-6 pr-12 rounded-2xl text-base"
                     secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    spellCheck={false}
+                    textContentType="newPassword"
+                    autoComplete="password-new"
                   />
                   <TouchableOpacity
                     onPress={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -180,19 +211,23 @@ const RegisterScreen = () => {
               {/* Register Button */}
               <TouchableOpacity
                 onPress={() => handleRegister(familyName, email, password)}
-                className={`w-full py-4 px-6 rounded-2xl mb-8 ${
+                className={`w-full py-4 px-6 rounded-2xl mb-8 flex-row items-center justify-center ${
                   isLoading || error !== "" || confirmPassword === "" || familyName === ""
                     ? "bg-gray-400"
                     : "bg-gray-200 active:bg-white"
                 }`}
                 disabled={isLoading || error !== "" || confirmPassword === "" || familyName === ""}
               >
-                <Text
-                  style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-                  className="text-gray-800 text-center text-lg"
-                >
-                  Register
-                </Text>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#1f2937" />
+                ) : (
+                  <Text
+                    style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
+                    className="text-gray-800 text-center text-lg"
+                  >
+                    Register
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
 

@@ -1,86 +1,159 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { View, Text, TouchableOpacity, StatusBar, Image } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import ProgressDots from "../../components/onboarding/ProgressDots";
 
-const GetStartedScreen = ({ currentPage = 4, totalPages = 4, isLastPage = true }) => {
-  const handleBack = () => {
-    router.back();
+// Standalone get-started screen — used when navigated to directly.
+// All onboarding logic now lives in index.jsx; this screen remains
+// a valid route and mirrors the final step's design.
+
+const GetStartedScreen = () => {
+  const handleGetStarted = async () => {
+    const accessToken = await SecureStore.getItemAsync("access_token");
+    router.push(accessToken ? "/(selection)/subscribe" : "/(auth)/welcome");
   };
 
-  const handleGetStarted = async () => {
-    try {
-      // Check if user has access token stored
-      const accessToken = await SecureStore.getItemAsync("access_token");
+  const handleLogin = () => {
+    router.push("/(auth)/login");
+  };
 
-      if (accessToken) {
-        // User is logged in, go to user selection
-        router.push("/(selection)/select-app");
-      } else {
-        // User not logged in, go to auth welcome
-        router.push("/(auth)/welcome");
-      }
-    } catch (error) {
-      console.error("Error checking access token:", error);
-      // If there's an error, default to welcome page
-      router.push("/(auth)/welcome");
-    }
+  const handleBack = () => {
+    router.back();
   };
 
   return (
     <>
       <StatusBar barStyle="light-content" />
-      <View className="flex-1 px-6 bg-background">
-        <Image source={require("../../assets/Ellipse1.png")} className=" absolute top-0 left-0" />
+      <View style={{ flex: 1, backgroundColor: "#262135" }}>
+        {/* Background decoration */}
+        <Image
+          source={require("../../assets/Ellipse1.png")}
+          style={{ position: "absolute", top: 0, left: 0 }}
+        />
 
-        {/* Content Container */}
-        <View className="flex-1 justify-end px-2">
-          {/* Page Indicators */}
-          <View className="flex-row justify-start mb-12">
-            {Array.from({ length: totalPages }).map((_, index) => (
-              <View
-                key={index}
-                className={`h-1 rounded-full mr-2 ${
-                  index === currentPage - 1 ? "bg-buttonPrimary w-8" : "bg-gray-600 w-2"
-                }`}
-              />
-            ))}
+        {/* Back button */}
+        <TouchableOpacity
+          onPress={handleBack}
+          activeOpacity={0.7}
+          style={{
+            position: "absolute",
+            top: 56,
+            left: 24,
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: "#494358",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 10,
+          }}
+        >
+          <Ionicons name="chevron-back" size={20} color="white" />
+        </TouchableOpacity>
+
+        {/* Content */}
+        <View style={{ flex: 1, paddingHorizontal: 28, justifyContent: "flex-end", paddingBottom: 16 }}>
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "flex-start" }}>
+            {/* Badge */}
+            <View
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                backgroundColor: "rgba(214,235,235,0.12)",
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: "rgba(214,235,235,0.25)",
+                marginBottom: 32,
+                alignSelf: "flex-start",
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: "MontserratAlternates_600SemiBold",
+                  fontSize: 13,
+                  color: "#D6EBEB",
+                  letterSpacing: 0.5,
+                }}
+              >
+                YOU'RE ALL SET
+              </Text>
+            </View>
+
+            <Text
+              style={{
+                fontFamily: "MontserratAlternates_700Bold",
+                fontSize: 40,
+                color: "#FFFFFF",
+                lineHeight: 50,
+                marginBottom: 20,
+              }}
+            >
+              Ready to{"\n"}make it count?
+            </Text>
+
+            <Text
+              style={{
+                fontFamily: "MontserratAlternates_400Regular",
+                fontSize: 16,
+                color: "#A0A0A0",
+                lineHeight: 26,
+                maxWidth: 280,
+              }}
+            >
+              Join your family's fitness challenge. Your first step starts now.
+            </Text>
           </View>
 
-          {/* Main Content */}
-          <View className="mb-16">
-            <Text
-              style={{ fontFamily: "MontserratAlternates_700Bold" }}
-              className="text-white text-4xl leading-tight mb-6"
-            >
-              Change yourself{"\n"}Take the initiative
-            </Text>
-
-            <Text
-              style={{ fontFamily: "MontserratAlternates_400Regular" }}
-              className="text-gray-300 text-base leading-6"
-            >
-              An initiative for self-improvement refers to the proactive efforts and actions taken to enhance one's
-              personal development and growth.
-            </Text>
+          {/* Progress indicator */}
+          <View style={{ marginBottom: 28 }}>
+            <ProgressDots total={4} current={3} />
           </View>
-        </View>
 
-        {/* Navigation Buttons */}
-        <View className="pb-12">
-          <TouchableOpacity
-            onPress={handleGetStarted}
-            className="w-full bg-buttonPrimary py-4 px-6 rounded-3xl active:bg-white"
-          >
-            <Text
-              style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-              className="text-gray-800 text-center text-lg font-bold"
+          {/* CTAs */}
+          <View style={{ gap: 12 }}>
+            <TouchableOpacity
+              onPress={handleGetStarted}
+              activeOpacity={0.85}
+              style={{
+                width: "100%",
+                backgroundColor: "#D6EBEB",
+                paddingVertical: 17,
+                borderRadius: 28,
+                alignItems: "center",
+              }}
             >
-              Get Started
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={{
+                  fontFamily: "MontserratAlternates_700Bold",
+                  fontSize: 17,
+                  color: "#262135",
+                }}
+              >
+                Get Started
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleLogin}
+              activeOpacity={0.7}
+              style={{ alignItems: "center", paddingVertical: 12 }}
+            >
+              <Text
+                style={{
+                  fontFamily: "MontserratAlternates_400Regular",
+                  fontSize: 15,
+                  color: "#A0A0A0",
+                }}
+              >
+                Already have an account?{" "}
+                <Text style={{ color: "#D6EBEB", fontFamily: "MontserratAlternates_600SemiBold" }}>
+                  Log in
+                </Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </>

@@ -81,11 +81,12 @@ const ForgotPasswordScreen = () => {
 
             {/* Content Container */}
             <View className="flex-1 justify-center min-h-[500px]">
-              {/* Footprint Icon */}
+              {/* Logo */}
               <View className="items-center mb-8">
-                <View className="w-16 h-16 rounded-full border-2 border-gray-400 justify-center items-center">
-                  <Ionicons name="footsteps" size={28} color="white" />
-                </View>
+                <Image
+                  source={require("../../assets/G-FIT-white.png")}
+                  style={{ width: 80, height: 80, resizeMode: "contain" }}
+                />
               </View>
 
               {/* Title and Description */}
@@ -111,10 +112,21 @@ const ForgotPasswordScreen = () => {
                   onChangeText={setEmail}
                   placeholder="Enter your email"
                   placeholderTextColor="#9CA3AF"
-                  style={{ fontFamily: "MontserratAlternates_400Regular" }}
-                  className="w-full bg-gray-700/50 text-white pb-2 h-14 px-6 rounded-2xl text-base"
+                  style={{
+                    fontFamily: "MontserratAlternates_400Regular",
+                    width: "100%",
+                    backgroundColor: "rgba(55,65,81,0.5)",
+                    color: "#fff",
+                    height: 56,
+                    paddingHorizontal: 24,
+                    borderRadius: 16,
+                    fontSize: 16,
+                  }}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  multiline={false}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
                 />
               </View>
 

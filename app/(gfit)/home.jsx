@@ -22,6 +22,7 @@ import { useGetProfile, useGetUnlockedAvatars, useGetLevels } from "../../api/pr
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from "react-native-svg";
 import { showToast } from "../../constants";
+import { parseXP, xpProgressLabel, xpRemainingLabel } from "../../utils/xp";
 
 // Sync configuration constants
 const SYNC_INTERVAL = 30 * 60 * 1000; // 30 minutes
@@ -56,14 +57,18 @@ export default function FitnessDashboard() {
   const { data: avatarsData } = useGetUnlockedAvatars();
   const { data: levelsData, isLoading: levelsLoading } = useGetLevels();
 
-  // XP — use API fields directly
-  const familyXP = profileData?.data?.xp ?? 0;
-  const currentLevel = profileData?.data?.level ?? 1;
-  const xpToNextLevel = profileData?.data?.xp_to_next_level ?? 0;
-  const remainingXP = profileData?.data?.remaining_xp ?? xpToNextLevel;
-  const maxXP = xpToNextLevel;
-  const xpProgress = xpToNextLevel > 0 ? ((xpToNextLevel - remainingXP) / xpToNextLevel) * 100 : 100;
-  const xpToNext = remainingXP;
+  // XP — single source of truth via parseXP()
+  const xpData = parseXP(profileData?.data, levelsData?.data);
+  const {
+    xp: familyXP,
+    level: currentLevel,
+    completionXP,
+    bandMax,
+    xpToNextLevel,
+    remainingXP,
+    progressPct: xpProgress,
+    isMaxLevel,
+  } = xpData;
 
   useEffect(() => {
     // Pulse animation for glow effect
@@ -626,67 +631,71 @@ export default function FitnessDashboard() {
           }
         >
           {/* Header */}
-          <View className="px-6 pt-2 pb-4 mb-8">
-            <View className="flex-row justify-between items-start">
-              <TouchableOpacity onPress={() => handleBackToAppSelection()} className="flex-row items-center mt-1">
-                <Ionicons name="chevron-back" size={24} color="white" />
-                <Text style={{ fontFamily: "MontserratAlternates_400Regular" }} className="text-white text-lg ml-1">
-                  Apps
-                </Text>
+          <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, marginBottom: 30 }}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <TouchableOpacity
+                onPress={() => handleBackToAppSelection()}
+                activeOpacity={0.75}
+                style={{ marginRight: 12 }}
+              >
+                <View
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 12,
+                    backgroundColor: "rgba(255,255,255,0.07)",
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.08)",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Ionicons name="chevron-back" size={20} color="#fff" />
+                </View>
               </TouchableOpacity>
-              <View className="flex-row space-x-3">
-                <TouchableOpacity onPress={() => syncStepsToBackend(true)}>
-                  <LinearGradient
-                    colors={["#374151", "#1F2937"]}
-                    className="p-3 rounded-xl"
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: "MontserratAlternates_700Bold", color: "#fff", fontSize: 22 }}>G-Fit</Text>
+              </View>
+              <View style={{ flexDirection: "row", gap: 8 }}>
+                <TouchableOpacity onPress={() => syncStepsToBackend(true)} activeOpacity={0.75}>
+                  <View
                     style={{
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.25,
-                      shadowRadius: 3.84,
+                      width: 38,
+                      height: 38,
+                      borderRadius: 12,
+                      backgroundColor: "rgba(255,255,255,0.07)",
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.08)",
+                      alignItems: "center",
+                      justifyContent: "center",
                     }}
                   >
-                    <Ionicons name="cloud-upload-outline" size={20} color={isSyncing ? "#F59E0B" : "#10B981"} />
-                  </LinearGradient>
+                    <Ionicons name="cloud-upload-outline" size={18} color={isSyncing ? "#F59E0B" : "#10B981"} />
+                  </View>
                 </TouchableOpacity>
-
-                {/* <TouchableOpacity onPress={handleManualStepEntry}>
-                  <LinearGradient
-                    colors={["#374151", "#1F2937"]}
-                    className="p-3 rounded-xl"
-                    style={{
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.25,
-                      shadowRadius: 3.84,
-                    }}
-                  >
-                    <Ionicons name="create-outline" size={20} color="white" />
-                  </LinearGradient>
-                </TouchableOpacity> */}
-
-                <TouchableOpacity onPress={() => router.push("/(gfit)/challenges")}>
+                <TouchableOpacity onPress={() => router.push("/(gfit)/challenges")} activeOpacity={0.75}>
                   <LinearGradient
                     colors={["#F59E0B", "#F97316"]}
-                    className="p-3 rounded-xl"
                     style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 12,
+                      alignItems: "center",
+                      justifyContent: "center",
                       shadowColor: "#F59E0B",
                       shadowOffset: { width: 0, height: 4 },
                       shadowOpacity: 0.3,
                       shadowRadius: 4.65,
                     }}
                   >
-                    <Ionicons name="trophy" size={20} color="white" />
+                    <Ionicons name="trophy" size={18} color="white" />
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
             </View>
 
-            <View className="flex-1">
-              <Text
-                className="text-white text-2xl font-bold mt-4"
-                style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-              >
+            <View style={{ marginTop: 16 }}>
+              <Text style={{ fontFamily: "MontserratAlternates_600SemiBold", color: "#fff", fontSize: 20 }}>
                 Welcome back {member.username ? member.username.split(" ")[0] : "User"}!
               </Text>
 
@@ -702,9 +711,7 @@ export default function FitnessDashboard() {
                   </View>
                   <View className="flex-row items-center">
                     <Text className="text-purple-400 text-xs font-bold">Level {currentLevel}</Text>
-                    <Text className="text-gray-400 text-xs ml-1">
-                      • {familyXP.toLocaleString()} / {maxXP.toLocaleString()} XP
-                    </Text>
+                    <Text className="text-gray-400 text-xs ml-1">• {xpProgressLabel(xpData)}</Text>
                   </View>
                 </View>
 
@@ -728,10 +735,10 @@ export default function FitnessDashboard() {
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center">
                       <Ionicons name="trophy" size={12} color="#F59E0B" style={{ marginRight: 4 }} />
-                      <Text className="text-gray-300 text-xs">{xpToNext.toLocaleString()} XP to next level</Text>
+                      <Text className="text-gray-300 text-xs">{xpRemainingLabel(xpData)}</Text>
                     </View>
                     <View className="flex-row items-center">
-                      <Text className="text-purple-400 text-xs font-medium">{Math.round(xpProgress)}% complete</Text>
+                      <Text className="text-purple-400 text-xs font-medium">{xpProgress}% complete</Text>
                       <Ionicons name="trending-up" size={12} color="#10B981" style={{ marginLeft: 4 }} />
                     </View>
                   </View>
@@ -929,7 +936,7 @@ export default function FitnessDashboard() {
 
                     {/* Participants */}
                     <View className="mb-4">
-                      <Text className="text-xs text-gray-400 mb-3">Family Members Today</Text>
+                      <Text className="text-xs text-gray-400 mb-3">Family Members</Text>
                       <View className="flex-row flex-wrap" style={{ gap: 8 }}>
                         {activeFamilyChallenge.participants.map((participant) => (
                           <View
@@ -1084,8 +1091,8 @@ export default function FitnessDashboard() {
                     </View>
                   </View>
                   <View className="items-end">
-                    <Text className="text-purple-400 font-bold text-base">{familyXP.toLocaleString()} XP</Text>
-                    <Text className="text-gray-400 text-xs">{remainingXP.toLocaleString()} to next</Text>
+                    <Text className="text-purple-400 font-bold text-base">{xpProgressLabel(xpData)}</Text>
+                    <Text className="text-gray-400 text-xs">{xpRemainingLabel(xpData)}</Text>
                   </View>
                 </View>
                 <View className="bg-gray-700/50 h-2 rounded-full overflow-hidden mt-3">

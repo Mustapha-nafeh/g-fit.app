@@ -201,8 +201,8 @@ export default function ChallengesPage() {
         >
           {/* ── Hero banner ── */}
           {challenge.image ? (
-            <View style={{ height: 150, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden" }}>
-              <Image source={{ uri: challenge.image }} style={{ width: "100%", height: "130%" }} resizeMode="contain" />
+            <View style={{ height: 300, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden" }}>
+              <Image source={{ uri: challenge.image }} style={{ width: "100%", height: "130%" }} resizeMode="cover" />
               <LinearGradient
                 colors={["transparent", "rgba(10,14,23,0.92)"]}
                 style={{ position: "absolute", inset: 0, bottom: 0, height: "100%" }}
@@ -487,7 +487,7 @@ export default function ChallengesPage() {
       <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
       <SafeAreaView style={{ flex: 1 }}>
         {/* ── Header ── */}
-        <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 6 }}>
+        <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 16 }}>
             <TouchableOpacity onPress={() => router.back()} activeOpacity={0.75} style={{ marginRight: 12 }}>
               <View
@@ -510,23 +510,21 @@ export default function ChallengesPage() {
                 Family Challenges
               </Text>
             </View>
-            <TouchableOpacity onPress={() => router.push("/(gfit)/challenges")} activeOpacity={0.75}>
-              <LinearGradient
-                colors={["#F59E0B", "#F97316"]}
+            <TouchableOpacity onPress={() => router.push("/(gfit)/leaderboard")} activeOpacity={0.75}>
+              <View
                 style={{
                   width: 38,
                   height: 38,
                   borderRadius: 12,
+                  backgroundColor: "rgba(255,255,255,0.07)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.08)",
                   alignItems: "center",
                   justifyContent: "center",
-                  shadowColor: "#F59E0B",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4.65,
                 }}
               >
-                <Ionicons name="trophy" size={18} color="white" />
-              </LinearGradient>
+                <Ionicons name="podium-outline" size={18} color="#fff" />
+              </View>
             </TouchableOpacity>
           </View>
 

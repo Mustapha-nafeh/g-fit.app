@@ -21,8 +21,11 @@ const Welcome = () => {
         <Image source={require("../../assets/Ellipse1.png")} className=" absolute top-0 left-0" />
         {/* Footprint Icon */}
         <View className="mb-16">
-          <View className="w-20 h-20 rounded-full border-2 border-gray-400 justify-center items-center">
-            <Ionicons name="footsteps" size={32} color="white" />
+          <View className="w-40 h-40 rounded-full border-2 border-gray-400 justify-center items-center">
+            <Image
+              source={require("../../assets/G-FIT-white.png")}
+              style={{ width: 80, height: 80, resizeMode: "contain" }}
+            />
           </View>
         </View>
 

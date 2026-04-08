@@ -4,7 +4,7 @@ import apiClient from "./apiClient";
 
 // Verify Purchase API
 export const verifyPurchaseApi = async (purchase) => {
-  const response = await apiClient.post("/verify-purchase", purchase);
+  const response = await apiClient.post("/purchases/verify-purchase", purchase);
   return response.data;
 };
 

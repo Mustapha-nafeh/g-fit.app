@@ -75,7 +75,19 @@ export const updateFamilyProfileApi = async (profileData) => {
 
 // PROFILE
 export const updateMemberProfileApi = async (memberData) => {
-  const response = await apiClient.post("/update-family-member", memberData);
+  const formData = new FormData();
+  formData.append("token_key", memberData.token_key);
+  formData.append("username", memberData.username);
+  if (memberData.image) {
+    formData.append("image", {
+      uri: memberData.image.uri,
+      type: memberData.image.mimeType || "image/jpeg",
+      name: memberData.image.fileName || "photo.jpg",
+    });
+  }
+  const response = await apiClient.post("/update-family-member", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return response.data;
 };
 
@@ -197,4 +209,24 @@ export const useGetLevels = () => {
     queryKey: ["levels"],
     staleTime: 60 * 60 * 1000, // 1 hour — levels rarely change
   });
+};
+
+// CANCEL SUBSCRIPTION
+export const cancelSubscriptionApi = async () => {
+  const response = await apiClient.post("/cancel-subscription");
+  return response.data;
+};
+
+export const useCancelSubscription = () => {
+  return useMutation({ mutationFn: cancelSubscriptionApi });
+};
+
+// CHANGE PASSWORD
+export const changePasswordApi = async (data) => {
+  const response = await apiClient.post("/change-password", data);
+  return response.data;
+};
+
+export const useChangePassword = () => {
+  return useMutation({ mutationFn: changePasswordApi });
 };

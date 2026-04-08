@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Image,
+  ActivityIndicator,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
@@ -20,8 +21,9 @@ import { router } from "expo-router";
 const OTPVerificationScreen = () => {
   const [otp, setOtp] = useState(["", "", "", ""]);
   const inputRefs = useRef([]);
-  const { mutate, isLoading, isError, data } = useCheckOtp(); // CHECK OTP
-  const { mutate: resendOtp } = useResendOtp(); // RESEND OTP
+  const [isLoading, setIsLoading] = useState(false);
+  const { mutate } = useCheckOtp();
+  const { mutate: resendOtp } = useResendOtp();
 
   const handleOtpChange = (value, index) => {
     const newOtp = [...otp];
@@ -50,15 +52,21 @@ const OTPVerificationScreen = () => {
       return;
     }
 
+    setIsLoading(true);
     mutate(
       { otp: otpCode, token_key: tokenKey },
       {
         onSuccess: (data) => {
           showToast("success", "OTP Verified", "Your OTP has been verified successfully!");
           securestore.setItemAsync("access_token", data.data.access_token);
-          router.replace("(selection)/subscribe");
+          if (data.data.is_subscribed) {
+            router.replace("/(selection)/select-app");
+          } else {
+            router.replace("/(selection)/subscribe");
+          }
         },
         onError: (error) => {
+          setIsLoading(false);
           showToast("error", "OTP Verification Failed", error.response?.data?.message || "An error occurred");
         },
       }
@@ -122,6 +130,14 @@ const OTPVerificationScreen = () => {
 
             {/* Content Container */}
             <View className="flex-1 justify-center min-h-[500px]">
+              {/* Logo */}
+              <View className="items-center mb-8">
+                <Image
+                  source={require("../../assets/G-FIT-white.png")}
+                  style={{ width: 80, height: 80, resizeMode: "contain" }}
+                />
+              </View>
+
               {/* Title */}
               <View className="mb-6">
                 <Text
@@ -161,15 +177,21 @@ const OTPVerificationScreen = () => {
               {/* Verify Button */}
               <TouchableOpacity
                 onPress={handleVerify}
-                className="w-full bg-gray-200 py-4 px-6 rounded-2xl mb-8 active:bg-white"
-                disabled={otp.some((digit) => !digit)}
+                className={`w-full py-4 px-6 rounded-2xl mb-8 flex-row items-center justify-center ${
+                  isLoading || otp.some((digit) => !digit) ? "bg-gray-400" : "bg-gray-200 active:bg-white"
+                }`}
+                disabled={isLoading || otp.some((digit) => !digit)}
               >
-                <Text
-                  style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
-                  className="text-gray-800 text-center text-lg"
-                >
-                  Verify
-                </Text>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#1f2937" />
+                ) : (
+                  <Text
+                    style={{ fontFamily: "MontserratAlternates_600SemiBold" }}
+                    className="text-gray-800 text-center text-lg"
+                  >
+                    Verify
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
 
