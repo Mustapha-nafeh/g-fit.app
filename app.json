@@ -56,8 +56,6 @@
     ],
     "extra": {
       "router": {},
-      "apiBaseUrl": "https://backend.g-fit.app/api/v1",
-      "storageBaseUrl": "https://backend.g-fit.app/storage",
       "eas": {
         "projectId": "da662151-4335-4421-8da6-a5de45456725"
       }

@@ -22,6 +22,9 @@
       "env": {
         "API_BASE_URL": "https://backend.g-fit.app/api/v1",
         "STORAGE_BASE_URL": "https://backend.g-fit.app/storage"
+      },
+      "android": {
+        "buildType": "apk"
       }
     },
     "production": {
